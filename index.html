@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GenMulti — Gerador Multimédia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- .gm — wrapper raiz da aplicação -->
+  <div class="gm">
+
+    <!-- Header -->
+    <header class="gm__header">
+      <div class="gm__brand">
+        <div class="gm__brand-icon">G</div>
+        <h1 class="gm__brand-name">Gen<span>Multi</span></h1>
+      </div>
+      <div class="gm__network-status">
+        <div class="gm__network-dot" id="gm-net-dot"></div>
+        <span class="gm__network-label" id="gm-net-label">Online</span>
+      </div>
+    </header>
+
+    <!-- Workspace -->
+    <div class="gm__workspace">
+
+      <!-- PAINEL ESQUERDO -->
+      <aside class="gm__panel">
+
+        <!-- Bloco 1: Tipo -->
+        <div class="gm__section">
+          <div class="gm__section-header">
+            <span class="gm__section-title">Tipo de Conteúdo</span>
+          </div>
+          <div class="gm__section-body">
+            <div class="gm__type-grid">
+              <button class="gm__type-card active" data-type="imagem">
+                <span class="gm__type-icon">🖼</span>
+                <span class="gm__type-label">Imagem</span>
+              </button>
+              <button class="gm__type-card" data-type="musica">
+                <span class="gm__type-icon">🎵</span>
+                <span class="gm__type-label">Música</span>
+              </button>
+              <button class="gm__type-card" data-type="som">
+                <span class="gm__type-icon">🔊</span>
+                <span class="gm__type-label">Som</span>
+              </button>
+              <button class="gm__type-card" data-type="video">
+                <span class="gm__type-icon">🎬</span>
+                <span class="gm__type-label">Vídeo</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bloco 2: Parâmetros -->
+        <div class="gm__section">
+          <div class="gm__section-header">
+            <span class="gm__section-title">Parâmetros</span>
+          </div>
+          <div class="gm__section-body">
+            <div class="gm__fields">
+              <div class="gm__field">
+                <label class="gm__field-label" for="param-tema">Tema</label>
+                <input class="gm__field-input" type="text" id="param-tema" placeholder="ex: natureza, tecnologia…">
+              </div>
+              <div class="gm__field">
+                <label class="gm__field-label" for="param-estilo">Estilo</label>
+                <input class="gm__field-input" type="text" id="param-estilo" placeholder="ex: realista, abstrato…">
+              </div>
+              <div class="gm__field">
+                <label class="gm__field-label" for="param-count">Nº de Resultados</label>
+                <div class="gm__field-row">
+                  <input type="number" id="param-count" min="1" max="4" value="1">
+                  <span class="gm__field-hint">máx. 4</span>
+                </div>
+              </div>
+              <div class="gm__field hidden" id="grupo-duracao">
+                <label class="gm__field-label" for="param-duracao">Duração (segundos)</label>
+                <div class="gm__field-row">
+                  <input type="number" id="param-duracao" min="5" max="30" value="10">
+                  <span class="gm__field-hint">máx. 30s</span>
+                </div>
+              </div>
+              <div class="gm__field">
+                <label class="gm__field-label" for="param-formato">Formato</label>
+                <select class="gm__field-select" id="param-formato">
+                  <option>PNG</option><option>WEBP</option><option>JPG</option>
+                </select>
+              </div>
+              <div class="gm__field">
+                <label class="gm__field-label" for="param-resolucao">Resolução</label>
+                <select class="gm__field-select" id="param-resolucao">
+                  <option value="512×512">512×512</option>
+                  <option value="1024×1024">1024×1024</option>
+                  <option value="1920×1080">1920×1080 (16:9)</option>
+                  <option value="1024×1792">1024×1792 (Retrato)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bloco 3: Inspiração -->
+        <div class="gm__section">
+          <div class="gm__section-header">
+            <span class="gm__section-title">Inspiração</span>
+            <span class="gm__section-badge">Opcional</span>
+          </div>
+          <div class="gm__section-body">
+            <div class="gm__fields">
+              <div class="gm__field">
+                <label class="gm__field-label" for="param-artista">Artista / Referência</label>
+                <input class="gm__field-input" type="text" id="param-artista" placeholder="ex: Van Gogh, Monet…">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Prompt + Gerar -->
+        <div class="gm__prompt-section">
+          <div class="gm__prompt-header">
+            <span class="gm__prompt-label">Prompt</span>
+            <button class="gm__prompt-clear" id="gm-prompt-clear">✕ limpar</button>
+          </div>
+          <textarea class="gm__prompt-textarea" id="gm-prompt" rows="4"
+            placeholder="Descreve o que queres gerar…"></textarea>
+          <button class="gm__generate-btn" id="gm-gerar">⚡ Gerar</button>
+        </div>
+
+      </aside>
+
+      <!-- OUTPUT -->
+      <section class="gm__output">
+        <div class="gm__output-header">
+          <span class="gm__output-title">Resultados</span>
+          <button class="gm__output-clear" onclick="UI.limparResultados();UI.mostrarPlaceholder()">✕ limpar</button>
+        </div>
+        <div class="gm__output-body">
+          <div class="gm__results-grid" id="gm-results">
+            <div class="gm__results-empty">
+              <div class="gm__results-empty-icon">✦</div>
+              <p>Os resultados aparecerão aqui</p>
+            </div>
+          </div>
+          <div class="gm__history">
+            <div class="gm__history-header">
+              <span class="gm__history-title">Histórico</span>
+              <button class="gm__history-clear-btn" id="gm-history-clear">✕ limpar</button>
+            </div>
+            <div class="gm__history-list" id="gm-history-list">
+              <p class="gm__history-empty">Sem histórico ainda.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
