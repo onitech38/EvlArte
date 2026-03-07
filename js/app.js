@@ -1,7 +1,19 @@
-// EvlArte — app.js (v0.2.0)
+// ============================================================
+//  EvlArte — app.js  (v1.0)
+//  Suporte completo para:
+//  - Imagem (Pollinations, sem CORS)
+//  - Música via proxy
+//  - Som via proxy
+//  - Vídeo via proxy
+//  - Histórico
+//  - Painel de logs
+// ============================================================
 
 (() => {
-  // ---------- DOM ----------
+
+  // ------------------------------------------------------------
+  // 1. DOM
+  // ------------------------------------------------------------
   const tipoBtns = document.querySelectorAll('.gm__type-card');
   const campoTema = document.getElementById('param-tema');
   const campoEstilo = document.getElementById('param-estilo');
@@ -25,12 +37,26 @@
   const netDot = document.getElementById('gm-net-dot');
   const netLabel = document.getElementById('gm-net-label');
 
-  // ---------- Estado ----------
+  const logBox = document.getElementById('gm-logs');
+
+  // ------------------------------------------------------------
+  // 2. Estado
+  // ------------------------------------------------------------
   let tipoAtual = 'imagem';
   let historico = [];
   const storageKey = CONFIG.storage.chave;
 
-  // ---------- Util ----------
+  // ------------------------------------------------------------
+  // 3. Utilitários
+  // ------------------------------------------------------------
+  function log(msg) {
+    if (!logBox) return;
+    const line = document.createElement('div');
+    line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    logBox.appendChild(line);
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+
   function setNetworkStatus(online) {
     netDot.classList.toggle('online', online);
     netDot.classList.toggle('offline', !online);
@@ -100,6 +126,9 @@
     resultsGrid.innerHTML = `<div class="gm__error-msg">${msg}</div>`;
   }
 
+  // ------------------------------------------------------------
+  // 4. UI
+  // ------------------------------------------------------------
   function atualizarPlaceholderPrompt() {
     txtPrompt.placeholder = CONFIG.exemplos[tipoAtual] || 'Descreve o que queres gerar…';
   }
@@ -115,7 +144,9 @@
     atualizarUIporTipo();
   }
 
-  // ---------- Pollinations ----------
+  // ------------------------------------------------------------
+  // 5. Construção de prompt
+  // ------------------------------------------------------------
   function construirPromptCompleto() {
     const partes = [];
     if (txtPrompt.value.trim()) partes.push(txtPrompt.value.trim());
@@ -125,6 +156,101 @@
     return partes.join(', ');
   }
 
+  // ------------------------------------------------------------
+  // 6. Funções via Proxy (Música, Som, Vídeo)
+  // ------------------------------------------------------------
+  async function gerarMusica(prompt, duracao) {
+    log('A gerar música via proxy…');
+
+    const urlReal = CONFIG.apis.musica.endpoint;
+    const urlProxy = CONFIG.proxyUrl + encodeURIComponent(urlReal);
+
+    const resp = await fetch(urlProxy, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, duration: duracao }),
+    });
+
+    if (!resp.ok) throw new Error('Falha ao gerar música.');
+
+    const blob = await resp.blob();
+    return URL.createObjectURL(blob);
+  }
+
+  async function gerarSom(prompt, duracao) {
+    log('A gerar som via proxy…');
+
+    const urlReal = CONFIG.apis.som.endpoint;
+    const urlProxy = CONFIG.proxyUrl + encodeURIComponent(urlReal);
+
+    const resp = await fetch(urlProxy, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, duration: duracao }),
+    });
+
+    if (!resp.ok) throw new Error('Falha ao gerar som.');
+
+    const blob = await resp.blob();
+    return URL.createObjectURL(blob);
+  }
+
+  async function gerarVideo(prompt) {
+    log('A gerar vídeo via proxy…');
+
+    const urlReal = CONFIG.apis.video.endpoint;
+    const urlProxy = CONFIG.proxyUrl + encodeURIComponent(urlReal);
+
+    const resp = await fetch(urlProxy, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+
+    if (!resp.ok) throw new Error('Falha ao gerar vídeo.');
+
+    const blob = await resp.blob();
+    return URL.createObjectURL(blob);
+  }
+
+  // ------------------------------------------------------------
+  // 7. Helpers de renderização
+  // ------------------------------------------------------------
+  function mostrarLoader(msg) {
+    resultsGrid.innerHTML = `
+      <div class="gm__coming-soon">
+        <span>⏳</span>
+        <p>${msg}</p>
+      </div>
+    `;
+  }
+
+  function mostrarAudio(url, prompt) {
+    resultsGrid.innerHTML = `
+      <div class="gm__result-card">
+        <div class="gm__result-audio-wrapper">
+          <div class="gm__result-audio-icon">🎵</div>
+          <div class="gm__result-audio-prompt">${prompt}</div>
+          <audio class="gm__result-audio" controls src="${url}"></audio>
+        </div>
+      </div>
+    `;
+  }
+
+  function mostrarVideo(url, prompt) {
+    resultsGrid.innerHTML = `
+      <div class="gm__result-card">
+        <video controls width="100%" src="${url}"></video>
+        <div class="gm__result-footer">
+          <span class="gm__result-seed">${prompt}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  // ------------------------------------------------------------
+  // 8. Pollinations (Imagem)
+  // ------------------------------------------------------------
   function construirUrlPollinations(modelo) {
     const { baseUrl, nologo, enhance } = CONFIG.apis.imagem.pollinations;
     const res = CONFIG.resolucoes[campoResolucao.value] || CONFIG.resolucoes['1024x1024'];
@@ -181,26 +307,63 @@
     imgEl.src = url;
   }
 
-  // ---------- Geração ----------
-  function gerar() {
+  // ------------------------------------------------------------
+  // 9. Função principal: gerar()
+  // ------------------------------------------------------------
+  async function gerar() {
     if (!navigator.onLine) {
       mostrarErro('Sem ligação à internet.');
       return;
     }
 
-    if (tipoAtual !== 'imagem') {
-      mostrarErro(CONFIG.apis[tipoAtual].mensagem);
-      adicionarAoHistorico(tipoAtual, txtPrompt.value.trim());
-      return;
-    }
-
-    const count = Math.min(Math.max(parseInt(campoCount.value || '1'), 1), CONFIG.limites.maxResultados);
     const promptFinal = construirPromptCompleto();
 
     if (!promptFinal.trim()) {
       mostrarErro('Escreve algo no prompt ou no tema.');
       return;
     }
+
+    // Música
+    if (tipoAtual === 'musica') {
+      mostrarLoader('A gerar música…');
+      try {
+        const url = await gerarMusica(promptFinal, parseInt(campoDuracao.value));
+        mostrarAudio(url, promptFinal);
+        adicionarAoHistorico('musica', promptFinal);
+      } catch {
+        mostrarErro('Erro ao gerar música.');
+      }
+      return;
+    }
+
+    // Som
+    if (tipoAtual === 'som') {
+      mostrarLoader('A gerar som…');
+      try {
+        const url = await gerarSom(promptFinal, parseInt(campoDuracao.value));
+        mostrarAudio(url, promptFinal);
+        adicionarAoHistorico('som', promptFinal);
+      } catch {
+        mostrarErro('Erro ao gerar som.');
+      }
+      return;
+    }
+
+    // Vídeo
+    if (tipoAtual === 'video') {
+      mostrarLoader('A gerar vídeo…');
+      try {
+        const url = await gerarVideo(promptFinal);
+        mostrarVideo(url, promptFinal);
+        adicionarAoHistorico('video', promptFinal);
+      } catch {
+        mostrarErro('Erro ao gerar vídeo.');
+      }
+      return;
+    }
+
+    // Imagem
+    const count = Math.min(Math.max(parseInt(campoCount.value || '1'), 1), CONFIG.limites.maxResultados);
 
     btnGerar.disabled = true;
     btnGerar.classList.add('loading');
@@ -229,7 +392,9 @@
     }, CONFIG.limites.timeoutImg);
   }
 
-  // ---------- Eventos ----------
+  // ------------------------------------------------------------
+  // 10. Eventos
+  // ------------------------------------------------------------
   tipoBtns.forEach(btn => btn.addEventListener('click', () => selecionarTipo(btn.dataset.type)));
   btnPromptClear.addEventListener('click', () => (txtPrompt.value = ''));
   btnGerar.addEventListener('click', gerar);
@@ -243,14 +408,18 @@
   window.addEventListener('online', () => setNetworkStatus(true));
   window.addEventListener('offline', () => setNetworkStatus(false));
 
-  // ---------- Init ----------
+  // ------------------------------------------------------------
+  // 11. Init
+  // ------------------------------------------------------------
   function init() {
     setNetworkStatus(navigator.onLine);
     carregarHistorico();
     atualizarHistoricoUI();
     selecionarTipo('imagem');
     limparResultados();
+    log('EvlArte iniciado.');
   }
 
   init();
+
 })();
