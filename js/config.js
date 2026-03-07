@@ -16,7 +16,7 @@ const CONFIG = {
       provedor: 'pollinations',
       pollinations: {
         baseUrl: 'https://image.pollinations.ai/prompt/',
-        modelo:  'flux',          // opções: 'flux' | 'turbo'
+        modelo:  'turbo',          // opções: 'flux' | 'turbo'
         nologo:  true,
       },
     },
