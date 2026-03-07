@@ -17,8 +17,9 @@ const CONFIG = {
     },
 
     musica: {
-      ativo: false,
-      mensagem: '🎵 Música requer proxy. Em breve!',
+      ativo: true,
+      endpoint: 'https://api-interna-musica.com/generate',
+      mensagem: '🎵 A gerar música via proxy…',
     },
 
     som: {
