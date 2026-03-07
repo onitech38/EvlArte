@@ -1,52 +1,46 @@
 /**
  * ============================================================
- *  GenMulti — config.js  (v0.1.0)
+ *  EvlArte — config.js  (v0.1.1)
  *  Todas as definições do projeto num único lugar.
  *  Para ajustar comportamentos, edita APENAS este ficheiro.
  * ============================================================
  */
-
 const CONFIG = {
-
-  versao: '0.1.0',
-  nome: 'GenMulti',
+  versao: '0.1.1',
+  nome: 'EvlArte',
 
   /* ── APIs ── */
   apis: {
-
     imagem: {
       ativo: true,
-      provedor: 'pollinations',           // trocar aqui para mudar fornecedor
+      provedor: 'pollinations',
       pollinations: {
         baseUrl: 'https://image.pollinations.ai/prompt/',
-        modelo: 'flux',                   // opções: 'flux' | 'turbo'
-        nologo: true,
+        modelo:  'flux',          // opções: 'flux' | 'turbo'
+        nologo:  true,
       },
     },
-
     musica: {
       ativo: true,
       provedor: 'huggingface',
       huggingface: {
-        baseUrl: 'https://api-inference.huggingface.co/models/',
-        modelo: 'facebook/musicgen-small',
-        chaveApi: '',                     // opcional — aumenta a quota diária
-        duracaoMaxSeg: 30,
+        baseUrl:        'https://api-inference.huggingface.co/models/',
+        modelo:         'facebook/musicgen-small',
+        chaveApi:       '',       // opcional — aumenta a quota diária
+        duracaoMaxSeg:  30,
       },
     },
-
     som: {
       ativo: true,
       provedor: 'huggingface',
       huggingface: {
-        baseUrl: 'https://api-inference.huggingface.co/models/',
-        modelo: 'facebook/audiogen-medium',
+        baseUrl:  'https://api-inference.huggingface.co/models/',
+        modelo:   'facebook/audiogen-medium',
         chaveApi: '',
       },
     },
-
     video: {
-      ativo: false,
+      ativo:    false,
       mensagem: 'Geração de vídeo está em desenvolvimento. Em breve! 🎬',
     },
   },
@@ -54,16 +48,19 @@ const CONFIG = {
   /* ── Limites ── */
   limites: {
     maxResultados: 4,
-    maxHistorico: 50,
-    audioPorVez: 2,     // áudio é lento — limitamos para não bloquear
+    maxHistorico:  50,
+    audioPorVez:   2,   // áudio é lento — limitamos para não bloquear
   },
 
-  /* ── Resoluções de imagem ── */
+  /* ── Resoluções de imagem
+       BUG 3 CORRIGIDO: chaves com "x" simples para coincidir com os
+       values do <select> no HTML
+  ── */
   resolucoes: {
-    '512×512':   { w: 512,  h: 512  },
-    '1024×1024': { w: 1024, h: 1024 },
-    '1920×1080': { w: 1920, h: 1080 },
-    '1024×1792': { w: 1024, h: 1792 },
+    '512x512':   { w: 512,  h: 512  },
+    '1024x1024': { w: 1024, h: 1024 },
+    '1920x1080': { w: 1920, h: 1080 },
+    '1024x1792': { w: 1024, h: 1792 },
   },
 
   /* ── Formatos por tipo ── */
@@ -84,7 +81,6 @@ const CONFIG = {
 
   /* ── Armazenamento local ── */
   storage: {
-    chave: 'genmulti_historico',
+    chave: 'evlarte_historico',
   },
-
 };
