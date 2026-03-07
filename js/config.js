@@ -1,77 +1,60 @@
 /**
  * ============================================================
- *  EvlArte — config.js  (v0.1.2)
- *  Adicionados provedores alternativos de imagem:
- *  pollinations → huggingface (SDXL) → lexica (fallback)
+ *  EvlArte — config.js  (v0.1.3)
+ *
+ *  LIÇÃO APRENDIDA:
+ *  HuggingFace e Lexica bloqueiam CORS — não funcionam
+ *  diretamente do browser.
+ *
+ *  Pollinations.ai funciona como URL direta de imagem
+ *  (não precisa de fetch — a tag <img> carrega sozinha).
+ *  Usamos 3 modelos diferentes como fallback.
  * ============================================================
  */
 const CONFIG = {
-  versao: '0.1.2',
+  versao: '0.1.3',
   nome: 'EvlArte',
 
-  /* ── APIs ── */
   apis: {
     imagem: {
       ativo: true,
 
-      /* Ordem de tentativa automática — se o 1º falhar, tenta o 2º, etc. */
-      ordem: ['pollinations', 'huggingface', 'lexica'],
+      /*
+       * Todos usam Pollinations mas com modelos diferentes.
+       * Se 'flux' der 502, tenta 'turbo', depois 'flux-realism'.
+       * A URL é usada DIRETAMENTE como src da <img> — sem fetch!
+       */
+      ordem: ['flux', 'turbo', 'flux-realism'],
 
       pollinations: {
         baseUrl: 'https://image.pollinations.ai/prompt/',
-        modelo:  'flux',        /* 'flux' | 'turbo' */
         nologo:  true,
-      },
-
-      /* Hugging Face — gratuito, sem chave (com chave tem mais quota) */
-      huggingface: {
-        baseUrl:  'https://api-inference.huggingface.co/models/',
-        modelo:   'stabilityai/stable-diffusion-xl-base-1.0',
-        chaveApi: '',
-      },
-
-      /* Lexica — pesquisa de imagens IA (sempre disponível, sem gerar de raiz) */
-      lexica: {
-        baseUrl: 'https://lexica.art/api/v1/search?q=',
+        enhance: false,
       },
     },
 
     musica: {
-      ativo: true,
-      provedor: 'huggingface',
-      huggingface: {
-        baseUrl:       'https://api-inference.huggingface.co/models/',
-        modelo:        'facebook/musicgen-small',
-        chaveApi:      '',
-        duracaoMaxSeg: 30,
-      },
+      ativo:    false,
+      mensagem: '🎵 Música requer servidor próprio (CORS). Em breve com solução proxy!',
     },
 
     som: {
-      ativo: true,
-      provedor: 'huggingface',
-      huggingface: {
-        baseUrl:  'https://api-inference.huggingface.co/models/',
-        modelo:   'facebook/audiogen-medium',
-        chaveApi: '',
-      },
+      ativo:    false,
+      mensagem: '🔊 Som requer servidor próprio (CORS). Em breve com solução proxy!',
     },
 
     video: {
       ativo:    false,
-      mensagem: 'Geração de vídeo está em desenvolvimento. Em breve! 🎬',
+      mensagem: '🎬 Geração de vídeo está em desenvolvimento. Em breve!',
     },
   },
 
-  /* ── Limites ── */
   limites: {
     maxResultados: 4,
     maxHistorico:  50,
-    audioPorVez:   2,
-    timeoutMs:     25000,   /* 25s por provedor */
+    timeoutImg:    30000,   /* ms para considerar imagem falhada */
   },
 
-  /* ── Resoluções de imagem ── */
   resolucoes: {
     '512x512':   { w: 512,  h: 512  },
     '1024x1024': { w: 1024, h: 1024 },
@@ -79,15 +62,13 @@ const CONFIG = {
     '1024x1792': { w: 1024, h: 1792 },
   },
 
-  /* ── Formatos por tipo ── */
   formatos: {
     imagem: ['PNG', 'WEBP', 'JPG'],
     video:  ['MP4', 'WEBM'],
-    musica: ['MP3', 'WAV', 'OGG'],
-    som:    ['WAV', 'MP3', 'OGG'],
+    musica: ['MP3', 'WAV'],
+    som:    ['WAV', 'MP3'],
   },
 
-  /* ── Prompts de exemplo ── */
   exemplos: {
     imagem: 'Uma floresta mágica ao entardecer, com criaturas fantásticas',
     musica: 'Música eletrónica animada que evoca sentimentos de festa',
@@ -95,7 +76,6 @@ const CONFIG = {
     video:  'Vida selvagem na savana africana ao amanhecer',
   },
 
-  /* ── Armazenamento local ── */
   storage: {
     chave: 'evlarte_historico',
   },
