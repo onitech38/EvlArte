@@ -1,6 +1,6 @@
 /**
  * ============================================================
- *  GenMulti — app.js  (v0.1.0)
+ *  EvlArte — app.js  (v0.1.1)
  *  Módulos: Estado | PromptBuilder | API | UI | App
  *  Depende de: config.js (carregado antes no HTML)
  * ============================================================
@@ -11,9 +11,9 @@
    1. ESTADO — fonte única de verdade
 ═══════════════════════════════════════ */
 const Estado = {
-  tipo: 'imagem',
-  online: navigator.onLine,
-  aGerar: false,
+  tipo:    'imagem',
+  online:  navigator.onLine,
+  aGerar:  false,
   historico: [],
 
   init() {
@@ -37,8 +37,11 @@ const Estado = {
 ═══════════════════════════════════════ */
 const PromptBuilder = {
   construir({ tema, estilo, artista } = {}) {
-    return [tema, estilo && `estilo ${estilo}`, artista && `ao estilo de ${artista}`]
-      .filter(Boolean).join(', ');
+    return [
+      tema,
+      estilo  && `estilo ${estilo}`,
+      artista && `ao estilo de ${artista}`,
+    ].filter(Boolean).join(', ');
   },
 };
 
@@ -51,12 +54,20 @@ const API = {
     const cfg = CONFIG.apis.imagem.pollinations;
     const dim = CONFIG.resolucoes[resolucao] ?? { w: 512, h: 512 };
     const s   = seed ?? Math.floor(Math.random() * 99999);
-    const qs  = new URLSearchParams({ width: dim.w, height: dim.h, model: cfg.modelo, seed: s, nologo: cfg.nologo });
-    return { tipo: 'imagem', url: `${cfg.baseUrl}${encodeURIComponent(prompt)}?${qs}`, prompt, seed: s };
+    const qs  = new URLSearchParams({
+      width:  dim.w,
+      height: dim.h,
+      model:  cfg.modelo,
+      seed:   s,
+      nologo: cfg.nologo,
+    });
+    const url = `${cfg.baseUrl}${encodeURIComponent(prompt)}?${qs}`;
+    console.log('[EvlArte] URL imagem:', url);
+    return { tipo: 'imagem', url, prompt, seed: s };
   },
 
   async gerarAudio(prompt, modelo, durSeg = 10) {
-    const chave = CONFIG.apis.musica.huggingface.chaveApi || '';
+    const chave   = CONFIG.apis.musica.huggingface.chaveApi || '';
     const headers = { 'Content-Type': 'application/json' };
     if (chave) headers['Authorization'] = `Bearer ${chave}`;
 
@@ -92,6 +103,7 @@ const UI = {
       gerarBtn:     q('gm-gerar'),
       promptArea:   q('gm-prompt'),
       promptClear:  q('gm-prompt-clear'),
+      outputClear:  q('gm-output-clear'),   // BUG 4 CORRIGIDO: estava em inline onclick
       resultsGrid:  q('gm-results'),
       historyList:  q('gm-history-list'),
       historyClear: q('gm-history-clear'),
@@ -109,15 +121,20 @@ const UI = {
   },
 
   setTipo(tipo) {
-    this.el.typeBtns.forEach(b => b.classList.toggle('active', b.dataset.type === tipo));
-    this.el.grupoDuracao.style.display = ['musica','som','video'].includes(tipo) ? 'flex' : 'none';
+    this.el.typeBtns.forEach(b =>
+      b.classList.toggle('active', b.dataset.type === tipo)
+    );
+    this.el.grupoDuracao.style.display =
+      ['musica', 'som', 'video'].includes(tipo) ? 'flex' : 'none';
     this._atualizarFormatos(tipo);
     this.el.promptArea.placeholder = CONFIG.exemplos[tipo] ?? '';
   },
 
   _atualizarFormatos(tipo) {
     const opts = CONFIG.formatos[tipo] ?? ['PNG'];
-    this.el.formato.innerHTML = opts.map(f => `<option value="${f}">${f}</option>`).join('');
+    this.el.formato.innerHTML = opts
+      .map(f => `<option value="${f}">${f}</option>`)
+      .join('');
   },
 
   autoPrompt() {
@@ -149,12 +166,14 @@ const UI = {
   },
 
   mostrarEmBreve(msg) {
-    this.el.resultsGrid.innerHTML = `<div class="gm__coming-soon"><span>⏳</span><p>${msg}</p></div>`;
+    this.el.resultsGrid.innerHTML =
+      `<div class="gm__coming-soon"><span>⏳</span><p>${msg}</p></div>`;
   },
 
   mostrarErro(msg) {
     const d = document.createElement('div');
-    d.className = 'gm__error-msg'; d.textContent = msg;
+    d.className  = 'gm__error-msg';
+    d.textContent = msg;
     this.el.resultsGrid.appendChild(d);
   },
 
@@ -170,7 +189,7 @@ const UI = {
       </div>
       <div class="gm__result-footer">
         <span class="gm__result-seed">seed: ${seed}</span>
-        <a class="gm__result-dl" href="${url}" target="_blank" download="genmulti_${seed}.png">↓ Guardar</a>
+        <a class="gm__result-dl" href="${url}" target="_blank" download="evlarte_${seed}.png">↓ Guardar</a>
       </div>`;
     this.el.resultsGrid.appendChild(c);
   },
@@ -187,7 +206,7 @@ const UI = {
       </div>
       <div class="gm__result-footer">
         <span></span>
-        <a class="gm__result-dl" href="${url}" download="genmulti_audio.wav">↓ Guardar</a>
+        <a class="gm__result-dl" href="${url}" download="evlarte_audio.wav">↓ Guardar</a>
       </div>`;
     this.el.resultsGrid.appendChild(c);
   },
@@ -199,26 +218,29 @@ const UI = {
       return;
     }
     list.innerHTML = [...historico].reverse().map(item => {
-      const trunc = item.prompt.length > 80 ? item.prompt.slice(0, 80) + '…' : item.prompt;
-      return `<div class="gm__history-item" data-prompt="${item.prompt}">
-        <div class="gm__history-item-header">
-          <span class="gm__history-type gm__history-type--${item.tipo}">${item.tipo}</span>
-          <span class="gm__history-time">${new Date(item.ts).toLocaleTimeString('pt-PT')}</span>
-        </div>
-        <p class="gm__history-prompt">${trunc}</p>
-      </div>`;
+      const trunc = item.prompt.length > 80
+        ? item.prompt.slice(0, 80) + '…'
+        : item.prompt;
+      return `
+        <div class="gm__history-item" data-prompt="${item.prompt}">
+          <div class="gm__history-item-header">
+            <span class="gm__history-type gm__history-type--${item.tipo}">${item.tipo}</span>
+            <span class="gm__history-time">${new Date(item.ts).toLocaleTimeString('pt-PT')}</span>
+          </div>
+          <p class="gm__history-prompt">${trunc}</p>
+        </div>`;
     }).join('');
 
     list.querySelectorAll('.gm__history-item').forEach(item => {
       item.addEventListener('click', () => {
-        UI.el.promptArea.value = item.dataset.prompt;
+        UI.el.promptArea.value          = item.dataset.prompt;
         UI.el.promptArea.dataset.manual = 'true';
       });
     });
   },
 
   setRede(online) {
-    this.el.netDot.className = `gm__network-dot ${online ? 'online' : 'offline'}`;
+    this.el.netDot.className    = `gm__network-dot ${online ? 'online' : 'offline'}`;
     this.el.netLabel.textContent = online ? 'Online' : 'Offline';
   },
 };
@@ -229,41 +251,75 @@ const UI = {
 const App = {
 
   init() {
-    Estado.init(); UI.init();
+    Estado.init();
+    UI.init();
     this._bindEventos();
     UI.setTipo(Estado.tipo);
     UI.setRede(Estado.online);
     UI.mostrarPlaceholder();
     UI.renderHistorico(Estado.historico);
+
     window.addEventListener('online',  () => UI.setRede((Estado.online = true)));
     window.addEventListener('offline', () => UI.setRede((Estado.online = false)));
+
+    console.log('[EvlArte] App iniciada v' + CONFIG.versao);
   },
 
   _bindEventos() {
+    /* Botões de tipo */
     UI.el.typeBtns.forEach(btn =>
       btn.addEventListener('click', () => {
         Estado.tipo = btn.dataset.type;
         UI.setTipo(Estado.tipo);
       })
     );
-    ['tema','estilo','artista'].forEach(k => UI.el[k]?.addEventListener('input', () => UI.autoPrompt()));
-    UI.el.promptArea.addEventListener('input', () => { UI.el.promptArea.dataset.manual = 'true'; });
+
+    /* Auto-prompt quando preenche os campos */
+    ['tema', 'estilo', 'artista'].forEach(k =>
+      UI.el[k]?.addEventListener('input', () => UI.autoPrompt())
+    );
+
+    /* Prompt manual cancela o auto */
+    UI.el.promptArea.addEventListener('input', () => {
+      UI.el.promptArea.dataset.manual = 'true';
+    });
+
+    /* Botão limpar prompt */
     UI.el.promptClear?.addEventListener('click', () => {
       UI.el.promptArea.value = '';
       delete UI.el.promptArea.dataset.manual;
     });
+
+    /* Botão limpar output */
+    UI.el.outputClear?.addEventListener('click', () => {
+      UI.limparResultados();
+      UI.mostrarPlaceholder();
+    });
+
+    /* Botão GERAR */
     UI.el.gerarBtn.addEventListener('click', () => this.gerar());
+
+    /* Limpar histórico */
     UI.el.historyClear?.addEventListener('click', () => {
-      Estado.limparHistorico(); UI.renderHistorico([]);
+      Estado.limparHistorico();
+      UI.renderHistorico([]);
     });
   },
 
   async gerar() {
     if (Estado.aGerar) return;
+
     const tipo   = Estado.tipo;
     const prompt = UI.el.promptArea.value.trim();
-    if (!prompt) { alert('Escreve um prompt antes de gerar! ✍️'); return; }
-    if (!Estado.online) { alert('Sem ligação à internet.'); return; }
+
+    if (!prompt) {
+      alert('Escreve um prompt antes de gerar! ✍️');
+      return;
+    }
+    if (!Estado.online) {
+      alert('Sem ligação à internet. Liga-te e tenta novamente.');
+      return;
+    }
 
     const apiCfg = CONFIG.apis[tipo];
     if (!apiCfg?.ativo) {
@@ -277,20 +333,21 @@ const App = {
     UI.limparResultados();
 
     const count     = Math.min(parseInt(UI.el.count.value) || 1, CONFIG.limites.maxResultados);
-    const resolucao = UI.el.resolucao?.value ?? '512×512';
+    const resolucao = UI.el.resolucao?.value ?? '512x512';
     const duracao   = parseInt(UI.el.duracao?.value) || 10;
 
     try {
       if (tipo === 'imagem') {
         const resultados = await Promise.all(
-          Array.from({ length: count }, () => API.gerarImagem(prompt, { resolucao }))
+          Array.from({ length: count }, () =>
+            API.gerarImagem(prompt, { resolucao })
+          )
         );
         resultados.forEach(r => UI.adicionarImagem(r));
 
       } else if (tipo === 'musica' || tipo === 'som') {
-        const modelo = tipo === 'musica'
-          ? CONFIG.apis.musica.huggingface.modelo
-          : CONFIG.apis.som.huggingface.modelo;
+        const cfg    = CONFIG.apis[tipo].huggingface;
+        const modelo = cfg.modelo;
         const limite = Math.min(count, CONFIG.limites.audioPorVez);
 
         for (let i = 0; i < limite; i++) {
@@ -298,7 +355,8 @@ const App = {
             UI.adicionarAudio(await API.gerarAudio(prompt, modelo, duracao));
           } catch (err) {
             if (err.message.startsWith('carregando:')) {
-              UI.mostrarErro(`⏳ Modelo a iniciar (~${err.message.split(':')[1]}s). Tenta novamente em breve.`);
+              const seg = err.message.split(':')[1];
+              UI.mostrarErro(`⏳ Modelo a iniciar (~${seg}s). Aguarda e tenta novamente.`);
             } else throw err;
           }
         }
@@ -308,7 +366,7 @@ const App = {
       UI.renderHistorico(Estado.historico);
 
     } catch (err) {
-      console.error('[GenMulti]', err);
+      console.error('[EvlArte]', err);
       UI.mostrarErro(`Erro: ${err.message}`);
     } finally {
       Estado.aGerar = false;
