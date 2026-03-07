@@ -1,11 +1,12 @@
 /**
  * ============================================================
- *  EvlArte — app.js  (v0.1.2)
- *  Módulos: Estado | PromptBuilder | API | UI | App
- *  Depende de: config.js (carregado antes no HTML)
+ *  EvlArte — app.js  (v0.1.3)
  *
- *  NOVO: fallback automático de provedores de imagem
- *  pollinations → huggingface → lexica
+ *  CORREÇÃO PRINCIPAL:
+ *  Pollinations funciona como URL direta — a tag <img> carrega
+ *  a imagem sem precisar de fetch(). Isto evita CORS e timeouts.
+ *
+ *  Fallback: se o modelo falhar (onerror na img), tenta o próximo.
  * ============================================================
  */
 'use strict';
@@ -14,9 +15,9 @@
    1. ESTADO
 ═══════════════════════════════════════ */
 const Estado = {
-  tipo:    'imagem',
-  online:  navigator.onLine,
-  aGerar:  false,
+  tipo:      'imagem',
+  online:    navigator.onLine,
+  aGerar:    false,
   historico: [],
 
   init() {
@@ -53,137 +54,28 @@ const PromptBuilder = {
 ═══════════════════════════════════════ */
 const API = {
 
-  /* ── Utilitário: fetch com timeout ── */
-  async _fetchComTimeout(url, opcoes = {}, ms = CONFIG.limites.timeoutMs) {
-    const ctrl   = new AbortController();
-    const timer  = setTimeout(() => ctrl.abort(), ms);
-    try {
-      return await fetch(url, { ...opcoes, signal: ctrl.signal });
-    } finally {
-      clearTimeout(timer);
-    }
-  },
+  /*
+   * Gera a URL da imagem — SEM fazer fetch().
+   * A <img> carrega diretamente — assim não há CORS.
+   * Se a imagem falhar (onerror), o card tenta o próximo modelo.
+   */
+  construirUrlImagem(prompt, modelo, { resolucao = '512x512', seed } = {}) {
+    const cfg = CONFIG.apis.imagem.pollinations;
+    const dim = CONFIG.resolucoes[resolucao] ?? { w: 512, h: 512 };
+    const s   = seed ?? Math.floor(Math.random() * 99999);
 
-  /* ────────────────────────────────────
-     IMAGEM — tenta provedores por ordem
-  ──────────────────────────────────── */
-  async gerarImagem(prompt, { resolucao = '512x512' } = {}) {
-    const ordem = CONFIG.apis.imagem.ordem;
-    const erros = [];
+    const qs = new URLSearchParams({
+      width:   dim.w,
+      height:  dim.h,
+      model:   modelo,
+      seed:    s,
+      nologo:  cfg.nologo,
+      enhance: cfg.enhance,
+    });
 
-    for (const provedor of ordem) {
-      try {
-        console.log(`[EvlArte] A tentar provedor: ${provedor}`);
-        UI.mostrarProvedor(provedor);
-
-        const resultado = await this._gerarImagemCom(provedor, prompt, resolucao);
-        console.log(`[EvlArte] ✅ Sucesso com ${provedor}`);
-        return resultado;
-
-      } catch (err) {
-        console.warn(`[EvlArte] ❌ ${provedor} falhou:`, err.message);
-        erros.push(`${provedor}: ${err.message}`);
-      }
-    }
-
-    throw new Error(`Todos os provedores falharam:\n${erros.join('\n')}`);
-  },
-
-  async _gerarImagemCom(provedor, prompt, resolucao) {
-    const dim  = CONFIG.resolucoes[resolucao] ?? { w: 512, h: 512 };
-    const seed = Math.floor(Math.random() * 99999);
-
-    /* ── Pollinations ── */
-    if (provedor === 'pollinations') {
-      const cfg = CONFIG.apis.imagem.pollinations;
-      const qs  = new URLSearchParams({
-        width: dim.w, height: dim.h,
-        model: cfg.modelo, seed, nologo: cfg.nologo,
-      });
-      const url = `${cfg.baseUrl}${encodeURIComponent(prompt)}?${qs}`;
-      console.log('[EvlArte] URL Pollinations:', url);
-
-      /* Testa se o servidor responde antes de entregar */
-      const resp = await this._fetchComTimeout(url, { method: 'HEAD' }, 15000);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-
-      return { tipo: 'imagem', url, prompt, seed, provedor: 'Pollinations' };
-    }
-
-    /* ── Hugging Face — devolve blob ── */
-    if (provedor === 'huggingface') {
-      const cfg     = CONFIG.apis.imagem.huggingface;
-      const headers = { 'Content-Type': 'application/json' };
-      if (cfg.chaveApi) headers['Authorization'] = `Bearer ${cfg.chaveApi}`;
-
-      const resp = await this._fetchComTimeout(
-        `${cfg.baseUrl}${cfg.modelo}`,
-        { method: 'POST', headers, body: JSON.stringify({ inputs: prompt }) },
-        60000   /* HuggingFace pode demorar mais */
-      );
-
-      if (resp.status === 503) {
-        const info = await resp.json().catch(() => ({}));
-        throw new Error(`Modelo a carregar (~${Math.ceil(info.estimated_time ?? 30)}s)`);
-      }
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-
-      const blob = await resp.blob();
-      const url  = URL.createObjectURL(blob);
-      return { tipo: 'imagem', url, prompt, seed, provedor: 'HuggingFace' };
-    }
-
-    /* ── Lexica — pesquisa (fallback sempre disponível) ── */
-    if (provedor === 'lexica') {
-      const cfg  = CONFIG.apis.imagem.lexica;
-      const resp = await this._fetchComTimeout(
-        `${cfg.baseUrl}${encodeURIComponent(prompt)}`,
-        {}, 10000
-      );
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-
-      const data = await resp.json();
-      if (!data.images?.length) throw new Error('Sem resultados no Lexica');
-
-      /* Devolve até 4 imagens aleatórias do resultado */
-      const imagens = data.images.slice(0, 4);
-      return imagens.map(img => ({
-        tipo: 'imagem',
-        url:  img.src,
-        prompt,
-        seed,
-        provedor: 'Lexica (pesquisa)',
-        aviso: '⚠️ Imagem de pesquisa, não gerada de raiz',
-      }));
-    }
-
-    throw new Error(`Provedor desconhecido: ${provedor}`);
-  },
-
-  /* ── Áudio ── */
-  async gerarAudio(prompt, modelo, durSeg = 10) {
-    const chaveMusica = CONFIG.apis.musica.huggingface.chaveApi;
-    const chaveSom    = CONFIG.apis.som.huggingface.chaveApi;
-    const chave       = chaveMusica || chaveSom || '';
-    const headers     = { 'Content-Type': 'application/json' };
-    if (chave) headers['Authorization'] = `Bearer ${chave}`;
-
-    const body = { inputs: prompt };
-    if (modelo.includes('musicgen')) body.parameters = { duration: durSeg };
-
-    const resp = await fetch(
-      `${CONFIG.apis.musica.huggingface.baseUrl}${modelo}`,
-      { method: 'POST', headers, body: JSON.stringify(body) }
-    );
-
-    if (resp.status === 503) {
-      const info = await resp.json().catch(() => ({}));
-      throw new Error(`carregando:${Math.ceil(info.estimated_time ?? 20)}`);
-    }
-    if (!resp.ok) throw new Error(`Erro ${resp.status}: ${resp.statusText}`);
-
-    const blob = await resp.blob();
-    return { tipo: 'audio', url: URL.createObjectURL(blob), prompt };
+    const url = `${cfg.baseUrl}${encodeURIComponent(prompt)}?${qs}`;
+    console.log(`[EvlArte] URL (${modelo}):`, url);
+    return { url, seed: s, modelo };
   },
 };
 
@@ -244,22 +136,12 @@ const UI = {
     if (p) this.el.promptArea.value = p;
   },
 
-  setGerando(on, texto = '') {
+  setGerando(on) {
     this.el.gerarBtn.disabled = on;
     this.el.gerarBtn.classList.toggle('loading', on);
     this.el.gerarBtn.innerHTML = on
-      ? `<span class="gm__spinner"></span> ${texto || 'A gerar…'}`
+      ? '<span class="gm__spinner"></span> A gerar…'
       : '⚡ Gerar';
-  },
-
-  /* Mostra qual provedor está a ser tentado */
-  mostrarProvedor(provedor) {
-    const nomes = {
-      pollinations: 'Pollinations',
-      huggingface:  'HuggingFace',
-      lexica:       'Lexica',
-    };
-    this.setGerando(true, `A tentar ${nomes[provedor] ?? provedor}…`);
   },
 
   limparResultados() { this.el.resultsGrid.innerHTML = ''; },
@@ -284,39 +166,51 @@ const UI = {
     this.el.resultsGrid.appendChild(d);
   },
 
-  adicionarImagem({ url, prompt, seed, provedor, aviso }) {
+  /*
+   * Cria o card e uma Promise que resolve quando a imagem
+   * carrega (onload) ou rejeita se falhar (onerror).
+   * O chamador pode usar isto para fazer fallback de modelo.
+   */
+  adicionarImagemComPromise({ url, seed, modelo, prompt }) {
     const c = document.createElement('div');
     c.className = 'gm__result-card gm__result-card--imagem';
-    c.innerHTML = `
-      <div class="gm__result-img-wrapper">
-        <div class="gm__result-loader">A carregar…</div>
-        <img class="gm__result-img" src="${url}" alt="${prompt}"
-          onload="this.previousElementSibling.style.display='none';this.style.opacity='1'"
-          onerror="this.closest('.gm__result-card').classList.add('error')">
-      </div>
-      <div class="gm__result-footer">
-        <span class="gm__result-seed">${provedor ? '📡 ' + provedor : 'seed: ' + seed}</span>
-        <a class="gm__result-dl" href="${url}" target="_blank" download="evlarte_${seed}.png">↓ Guardar</a>
-      </div>
-      ${aviso ? `<div class="gm__result-aviso">${aviso}</div>` : ''}`;
-    this.el.resultsGrid.appendChild(c);
-  },
 
-  adicionarAudio({ url, prompt }) {
-    const c = document.createElement('div');
-    c.className = 'gm__result-card gm__result-card--audio';
-    const t = prompt.length > 70 ? prompt.slice(0, 70) + '…' : prompt;
-    c.innerHTML = `
-      <div class="gm__result-audio-wrapper">
-        <div class="gm__result-audio-icon">♫</div>
-        <p class="gm__result-audio-prompt">${t}</p>
-        <audio class="gm__result-audio" controls src="${url}"></audio>
-      </div>
-      <div class="gm__result-footer">
-        <span></span>
-        <a class="gm__result-dl" href="${url}" download="evlarte_audio.wav">↓ Guardar</a>
-      </div>`;
+    const promise = new Promise((resolve, reject) => {
+      c.innerHTML = `
+        <div class="gm__result-img-wrapper">
+          <div class="gm__result-loader">🤖 modelo: ${modelo}…</div>
+          <img class="gm__result-img" src="${url}" alt="${prompt}">
+        </div>
+        <div class="gm__result-footer">
+          <span class="gm__result-seed">🎨 ${modelo} · seed ${seed}</span>
+          <a class="gm__result-dl" href="${url}" target="_blank"
+             download="evlarte_${seed}.png">↓ Guardar</a>
+        </div>`;
+
+      const img    = c.querySelector('.gm__result-img');
+      const loader = c.querySelector('.gm__result-loader');
+
+      img.onload  = () => {
+        loader.style.display = 'none';
+        img.style.opacity    = '1';
+        resolve(c);
+      };
+      img.onerror = () => {
+        c.remove();
+        reject(new Error(`Modelo ${modelo} falhou`));
+      };
+
+      /* Timeout de segurança */
+      setTimeout(() => {
+        if (img.style.opacity !== '1') {
+          c.remove();
+          reject(new Error(`Timeout no modelo ${modelo}`));
+        }
+      }, CONFIG.limites.timeoutImg);
+    });
+
     this.el.resultsGrid.appendChild(c);
+    return promise;
   },
 
   renderHistorico(historico) {
@@ -407,6 +301,25 @@ const App = {
     });
   },
 
+  async gerarUmaImagem(prompt, resolucao) {
+    const modelos = CONFIG.apis.imagem.ordem;
+    const seed    = Math.floor(Math.random() * 99999);
+
+    for (const modelo of modelos) {
+      try {
+        console.log(`[EvlArte] A tentar modelo: ${modelo}`);
+        const { url } = API.construirUrlImagem(prompt, modelo, { resolucao, seed });
+        await UI.adicionarImagemComPromise({ url, seed, modelo, prompt });
+        console.log(`[EvlArte] ✅ Sucesso com modelo: ${modelo}`);
+        return; /* Saiu — imagem carregou! */
+      } catch (err) {
+        console.warn(`[EvlArte] ❌ ${modelo}:`, err.message);
+      }
+    }
+
+    UI.mostrarErro('⚠️ Todos os modelos falharam. O servidor Pollinations.ai pode estar em baixo. Tenta novamente em alguns minutos.');
+  },
+
   async gerar() {
     if (Estado.aGerar) return;
 
@@ -429,35 +342,15 @@ const App = {
 
     const count     = Math.min(parseInt(UI.el.count.value) || 1, CONFIG.limites.maxResultados);
     const resolucao = UI.el.resolucao?.value ?? '512x512';
-    const duracao   = parseInt(UI.el.duracao?.value) || 10;
 
     try {
       if (tipo === 'imagem') {
-        for (let i = 0; i < count; i++) {
-          const resultado = await API.gerarImagem(prompt, { resolucao });
-
-          /* Lexica pode devolver array */
-          if (Array.isArray(resultado)) {
-            resultado.forEach(r => UI.adicionarImagem(r));
-          } else {
-            UI.adicionarImagem(resultado);
-          }
-        }
-
-      } else if (tipo === 'musica' || tipo === 'som') {
-        const modelo = CONFIG.apis[tipo].huggingface.modelo;
-        const limite = Math.min(count, CONFIG.limites.audioPorVez);
-
-        for (let i = 0; i < limite; i++) {
-          try {
-            UI.adicionarAudio(await API.gerarAudio(prompt, modelo, duracao));
-          } catch (err) {
-            if (err.message.startsWith('carregando:')) {
-              const seg = err.message.split(':')[1];
-              UI.mostrarErro(`⏳ Modelo a iniciar (~${seg}s). Aguarda e tenta novamente.`);
-            } else throw err;
-          }
-        }
+        /* Gera todas em paralelo */
+        await Promise.all(
+          Array.from({ length: count }, () =>
+            this.gerarUmaImagem(prompt, resolucao)
+          )
+        );
       }
 
       Estado.adicionarHistorico({ tipo, prompt, ts: Date.now() });
