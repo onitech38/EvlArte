@@ -1,6 +1,6 @@
 export default {
   async fetch(request) {
-    // CORS preflight
+    // Preflight CORS
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         headers: {
@@ -17,7 +17,6 @@ export default {
       return new Response('Missing url param', { status: 400 });
     }
 
-    // Clonar método, headers e body
     const init = {
       method: request.method,
       headers: request.headers,
@@ -29,7 +28,6 @@ export default {
 
     const resp = await fetch(target, init);
 
-    // Copiar headers e adicionar CORS
     const headers = new Headers(resp.headers);
     headers.set('Access-Control-Allow-Origin', '*');
 
