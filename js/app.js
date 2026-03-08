@@ -153,7 +153,6 @@
     const urlReal = cfg.endpoint;
     const urlProxy = CONFIG.proxyUrl + encodeURIComponent(urlReal);
 
-    // Hugging Face Inference API espera { "inputs": "texto" }
     const body = {
       inputs: `${prompt} (duração aproximada: ${duracao || 10} segundos)`,
     };
@@ -177,7 +176,7 @@
     return URL.createObjectURL(blob);
   }
 
-  // 🔊 Som (placeholder via proxy — podes adaptar depois)
+  // 🔊 Som (placeholder via proxy)
   async function gerarSom(prompt, duracao) {
     log('A gerar som via proxy…');
 
@@ -201,7 +200,7 @@
     return URL.createObjectURL(blob);
   }
 
-  // 🎬 Vídeo (placeholder via proxy — podes adaptar depois)
+  // 🎬 Vídeo (placeholder via proxy)
   async function gerarVideo(prompt) {
     log('A gerar vídeo via proxy…');
 
