@@ -1,19 +1,10 @@
 // ============================================================
 //  EvlArte — app.js  (v1.0)
-//  Suporte completo para:
-//  - Imagem (Pollinations, sem CORS)
-//  - Música via proxy
-//  - Som via proxy
-//  - Vídeo via proxy
-//  - Histórico
-//  - Painel de logs
 // ============================================================
 
 (() => {
 
-  // ------------------------------------------------------------
   // 1. DOM
-  // ------------------------------------------------------------
   const tipoBtns = document.querySelectorAll('.gm__type-card');
   const campoTema = document.getElementById('param-tema');
   const campoEstilo = document.getElementById('param-estilo');
@@ -39,16 +30,12 @@
 
   const logBox = document.getElementById('gm-logs');
 
-  // ------------------------------------------------------------
   // 2. Estado
-  // ------------------------------------------------------------
   let tipoAtual = 'imagem';
   let historico = [];
   const storageKey = CONFIG.storage.chave;
 
-  // ------------------------------------------------------------
   // 3. Utilitários
-  // ------------------------------------------------------------
   function log(msg) {
     if (!logBox) return;
     const line = document.createElement('div');
@@ -126,9 +113,7 @@
     resultsGrid.innerHTML = `<div class="gm__error-msg">${msg}</div>`;
   }
 
-  // ------------------------------------------------------------
   // 4. UI
-  // ------------------------------------------------------------
   function atualizarPlaceholderPrompt() {
     txtPrompt.placeholder = CONFIG.exemplos[tipoAtual] || 'Descreve o que queres gerar…';
   }
@@ -144,9 +129,7 @@
     atualizarUIporTipo();
   }
 
-  // ------------------------------------------------------------
-  // 5. Construção de prompt
-  // ------------------------------------------------------------
+  // 5. Prompt
   function construirPromptCompleto() {
     const partes = [];
     if (txtPrompt.value.trim()) partes.push(txtPrompt.value.trim());
@@ -156,9 +139,7 @@
     return partes.join(', ');
   }
 
-  // ------------------------------------------------------------
-  // 6. Funções via Proxy (Música, Som, Vídeo)
-  // ------------------------------------------------------------
+  // 6. Proxy (música, som, vídeo)
   async function gerarMusica(prompt, duracao) {
     log('A gerar música via proxy…');
 
@@ -213,9 +194,7 @@
     return URL.createObjectURL(blob);
   }
 
-  // ------------------------------------------------------------
   // 7. Helpers de renderização
-  // ------------------------------------------------------------
   function mostrarLoader(msg) {
     resultsGrid.innerHTML = `
       <div class="gm__coming-soon">
@@ -248,9 +227,7 @@
     `;
   }
 
-  // ------------------------------------------------------------
-  // 8. Pollinations (Imagem)
-  // ------------------------------------------------------------
+  // 8. Pollinations (imagem)
   function construirUrlPollinations(modelo) {
     const { baseUrl, nologo, enhance } = CONFIG.apis.imagem.pollinations;
     const res = CONFIG.resolucoes[campoResolucao.value] || CONFIG.resolucoes['1024x1024'];
@@ -307,9 +284,7 @@
     imgEl.src = url;
   }
 
-  // ------------------------------------------------------------
-  // 9. Função principal: gerar()
-  // ------------------------------------------------------------
+  // 9. gerar()
   async function gerar() {
     if (!navigator.onLine) {
       mostrarErro('Sem ligação à internet.');
@@ -325,12 +300,13 @@
 
     // Música
     if (tipoAtual === 'musica') {
-      mostrarLoader('A gerar música…');
+      mostrarLoader(CONFIG.apis.musica.mensagem);
       try {
         const url = await gerarMusica(promptFinal, parseInt(campoDuracao.value));
         mostrarAudio(url, promptFinal);
         adicionarAoHistorico('musica', promptFinal);
-      } catch {
+      } catch (e) {
+        log('Erro música: ' + e.message);
         mostrarErro('Erro ao gerar música.');
       }
       return;
@@ -338,12 +314,13 @@
 
     // Som
     if (tipoAtual === 'som') {
-      mostrarLoader('A gerar som…');
+      mostrarLoader(CONFIG.apis.som.mensagem);
       try {
         const url = await gerarSom(promptFinal, parseInt(campoDuracao.value));
         mostrarAudio(url, promptFinal);
         adicionarAoHistorico('som', promptFinal);
-      } catch {
+      } catch (e) {
+        log('Erro som: ' + e.message);
         mostrarErro('Erro ao gerar som.');
       }
       return;
@@ -351,12 +328,13 @@
 
     // Vídeo
     if (tipoAtual === 'video') {
-      mostrarLoader('A gerar vídeo…');
+      mostrarLoader(CONFIG.apis.video.mensagem);
       try {
         const url = await gerarVideo(promptFinal);
         mostrarVideo(url, promptFinal);
         adicionarAoHistorico('video', promptFinal);
-      } catch {
+      } catch (e) {
+        log('Erro vídeo: ' + e.message);
         mostrarErro('Erro ao gerar vídeo.');
       }
       return;
@@ -392,9 +370,7 @@
     }, CONFIG.limites.timeoutImg);
   }
 
-  // ------------------------------------------------------------
   // 10. Eventos
-  // ------------------------------------------------------------
   tipoBtns.forEach(btn => btn.addEventListener('click', () => selecionarTipo(btn.dataset.type)));
   btnPromptClear.addEventListener('click', () => (txtPrompt.value = ''));
   btnGerar.addEventListener('click', gerar);
@@ -408,9 +384,7 @@
   window.addEventListener('online', () => setNetworkStatus(true));
   window.addEventListener('offline', () => setNetworkStatus(false));
 
-  // ------------------------------------------------------------
   // 11. Init
-  // ------------------------------------------------------------
   function init() {
     setNetworkStatus(navigator.onLine);
     carregarHistorico();
