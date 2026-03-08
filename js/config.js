@@ -1,8 +1,13 @@
+/*
+ * EvlArte — config.js (v1.0)
+ */
+
 const CONFIG = {
-  versao: '0.2.0',
+  versao: '1.0.0',
   nome: 'EvlArte',
 
-  proxyUrl: 'https://TEU_WORKER.cloudflare.workers.dev?url=',
+  // URL do teu Cloudflare Worker (termina em ?url=)
+  proxyUrl: 'https://TEU_WORKER_URL.workers.dev?url=',
 
   apis: {
     imagem: {
@@ -18,18 +23,20 @@ const CONFIG = {
 
     musica: {
       ativo: true,
-      endpoint: 'https://api-interna-musica.com/generate',
+      endpoint: 'https://api-interna-musica.com/generate', // TROCAR
       mensagem: '🎵 A gerar música via proxy…',
     },
 
     som: {
-      ativo: false,
-      mensagem: '🔊 Som requer proxy. Em breve!',
+      ativo: true,
+      endpoint: 'https://api-interna-som.com/generate', // TROCAR
+      mensagem: '🔊 A gerar som via proxy…',
     },
 
     video: {
-      ativo: false,
-      mensagem: '🎬 Vídeo em desenvolvimento.',
+      ativo: true,
+      endpoint: 'https://api-interna-video.com/generate', // TROCAR
+      mensagem: '🎬 A gerar vídeo via proxy…',
     },
   },
 
