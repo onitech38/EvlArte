@@ -1,5 +1,5 @@
 // ============================================================
-//  EvlArte — app.js  (v1.0)
+//  EvlArte — app.js  (v1.1)
 // ============================================================
 
 (() => {
@@ -140,28 +140,53 @@
   }
 
   // 6. Proxy (música, som, vídeo)
-  async function gerarMusica(prompt, duracao) {
-    log('A gerar música via proxy…');
 
-    const urlReal = CONFIG.apis.musica.endpoint;
+  // 🎵 Música via Hugging Face (text-to-audio) + proxy
+  async function gerarMusica(prompt, duracao) {
+    log('A gerar música via Hugging Face (proxy)…');
+
+    const cfg = CONFIG.apis.musica;
+    if (!cfg.endpoint || !cfg.token) {
+      throw new Error('Configuração de música incompleta.');
+    }
+
+    const urlReal = cfg.endpoint;
     const urlProxy = CONFIG.proxyUrl + encodeURIComponent(urlReal);
+
+    // Hugging Face Inference API espera { "inputs": "texto" }
+    const body = {
+      inputs: `${prompt} (duração aproximada: ${duracao || 10} segundos)`,
+    };
 
     const resp = await fetch(urlProxy, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, duration: duracao }),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${cfg.token}`,
+      },
+      body: JSON.stringify(body),
     });
 
-    if (!resp.ok) throw new Error('Falha ao gerar música.');
+    if (!resp.ok) {
+      const txt = await resp.text().catch(() => '');
+      log('Resposta HF não OK: ' + resp.status + ' ' + txt);
+      throw new Error('Falha ao gerar música.');
+    }
 
     const blob = await resp.blob();
     return URL.createObjectURL(blob);
   }
 
+  // 🔊 Som (placeholder via proxy — podes adaptar depois)
   async function gerarSom(prompt, duracao) {
     log('A gerar som via proxy…');
 
-    const urlReal = CONFIG.apis.som.endpoint;
+    const cfg = CONFIG.apis.som;
+    if (!cfg.endpoint) {
+      throw new Error('Endpoint de som não configurado.');
+    }
+
+    const urlReal = cfg.endpoint;
     const urlProxy = CONFIG.proxyUrl + encodeURIComponent(urlReal);
 
     const resp = await fetch(urlProxy, {
@@ -176,10 +201,16 @@
     return URL.createObjectURL(blob);
   }
 
+  // 🎬 Vídeo (placeholder via proxy — podes adaptar depois)
   async function gerarVideo(prompt) {
     log('A gerar vídeo via proxy…');
 
-    const urlReal = CONFIG.apis.video.endpoint;
+    const cfg = CONFIG.apis.video;
+    if (!cfg.endpoint) {
+      throw new Error('Endpoint de vídeo não configurado.');
+    }
+
+    const urlReal = cfg.endpoint;
     const urlProxy = CONFIG.proxyUrl + encodeURIComponent(urlReal);
 
     const resp = await fetch(urlProxy, {
