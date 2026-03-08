@@ -1,9 +1,9 @@
 /*
- * EvlArte — config.js (v1.0)
+ * EvlArte — config.js (v1.1)
  */
 
 const CONFIG = {
-  versao: '1.0.0',
+  versao: '1.1.0',
   nome: 'EvlArte',
 
   // URL do teu Cloudflare Worker (termina em ?url=)
@@ -23,20 +23,22 @@ const CONFIG = {
 
     musica: {
       ativo: true,
-      endpoint: 'https://api-interna-musica.com/generate', // TROCAR
-      mensagem: '🎵 A gerar música via proxy…',
+      // Endpoint real da Hugging Face (modelo de música / áudio)
+      endpoint: 'https://api-inference.huggingface.co/models/SEU_MODELO_HF',
+      token: 'SEU_TOKEN_HF',
+      mensagem: '🎵 A gerar música via Hugging Face (proxy)…',
     },
 
     som: {
-      ativo: true,
-      endpoint: 'https://api-interna-som.com/generate', // TROCAR
-      mensagem: '🔊 A gerar som via proxy…',
+      ativo: false,
+      endpoint: '',
+      mensagem: '🔊 Som via proxy ainda não configurado.',
     },
 
     video: {
-      ativo: true,
-      endpoint: 'https://api-interna-video.com/generate', // TROCAR
-      mensagem: '🎬 A gerar vídeo via proxy…',
+      ativo: false,
+      endpoint: '',
+      mensagem: '🎬 Vídeo via proxy ainda não configurado.',
     },
   },
 
@@ -64,4 +66,3 @@ const CONFIG = {
     chave: 'evlarte_historico',
   },
 };
-/*comfig*/
