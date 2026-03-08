@@ -64,3 +64,4 @@ const CONFIG = {
     chave: 'evlarte_historico',
   },
 };
+/*comfig*/
