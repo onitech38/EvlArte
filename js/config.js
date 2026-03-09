@@ -12,7 +12,7 @@ const CONFIG = {
   apis: {
     imagem: {
       ativo: true,
-      ordem: ['flux', 'turbo', 'flux-realism'],
+      ordem: ['flux', 'flux', 'flux'],
 
       pollinations: {
         baseUrl: 'https://image.pollinations.ai/prompt/',
