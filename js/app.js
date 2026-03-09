@@ -275,7 +275,6 @@
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${cfg.token}`,
       },
       body: JSON.stringify({
         inputs: `${prompt} (duration: ${duracao || 10} seconds)`,
