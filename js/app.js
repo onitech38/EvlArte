@@ -1,13 +1,9 @@
 // ============================================================
-//  EvlArte — app.js  (v1.2)
-//  CORREÇÕES:
-//  - Botão Gerar reposto imediatamente após erro de imagem
-//  - campoCount valida NaN
-//  - Som e Vídeo mostram feedback claro ao utilizador
-//  - Download de imagem via blob (evita erro CORS)
-//  - Logs de debug ocultáveis com tecla `
-//  - Histórico guarda miniatura da imagem (base64)
-//  - Validação de config no init()
+//  EvlArte — app.js  (v1.3)
+//  CORREÇÕES v1.3:
+//  - Histórico guarda prompt RAW (sem tema/estilo) — evita duplicação
+//  - Histórico ao clicar repõe campos individuais (tema, estilo, artista)
+//  - Aspect-ratio do card de imagem ajusta-se à resolução escolhida
 // ============================================================
 
 (() => {
@@ -56,11 +52,15 @@
     logBox.scrollTop = logBox.scrollHeight;
   }
 
-  document.addEventListener('keydown', e => {
-    if (e.key === '`') {
-      logBox.style.display = logBox.style.display === 'none' ? 'block' : 'none';
-    }
-  });
+  // Botão toggle de logs
+  const btnLog = document.getElementById('gm-log-toggle');
+  if (btnLog) {
+    btnLog.addEventListener('click', () => {
+      const visible = logBox.style.display !== 'none';
+      logBox.style.display = visible ? 'none' : 'block';
+      btnLog.textContent = visible ? '🐛 logs' : '✕ logs';
+    });
+  }
 
   // ─────────────────────────────────────────────
   // 4. Rede
@@ -126,16 +126,28 @@
 
       li.addEventListener('click', () => {
         selecionarTipo(item.tipo);
-        txtPrompt.value = item.prompt;
+        txtPrompt.value        = item.prompt  || '';
+        campoTema.value        = item.tema    || '';
+        campoEstilo.value      = item.estilo  || '';
+        campoArtista.value     = item.artista || '';
       });
 
       historyList.appendChild(li);
     });
   }
 
+  // Guarda prompt RAW + campos individuais — evita duplicação ao reutilizar
   function adicionarAoHistorico(tipo, prompt, thumb = null) {
     if (!prompt.trim()) return;
-    historico.push({ tipo, prompt, ts: Date.now(), thumb });
+    historico.push({
+      tipo,
+      prompt,                          // texto puro do textarea
+      tema:    campoTema.value.trim(),
+      estilo:  campoEstilo.value.trim(),
+      artista: campoArtista.value.trim(),
+      ts:      Date.now(),
+      thumb,
+    });
     guardarHistorico();
     atualizarHistoricoUI();
   }
@@ -193,6 +205,16 @@
   }
 
   // ─────────────────────────────────────────────
+  // 6b. Aspect-ratio dinâmico dos cards
+  // ─────────────────────────────────────────────
+  function atualizarRatioCards() {
+    const res = CONFIG.resolucoes[campoResolucao.value] || CONFIG.resolucoes['1024x1024'];
+    const ratio = res.w / res.h;
+    // Aplica a variável CSS à grid — todos os cards herdam
+    resultsGrid.style.setProperty('--card-ratio', ratio);
+  }
+
+  // ─────────────────────────────────────────────
   // 7. UI — tipo e placeholder
   // ─────────────────────────────────────────────
   function atualizarPlaceholderPrompt() {
@@ -200,8 +222,21 @@
   }
 
   function atualizarUIporTipo() {
+    const eImagem  = tipoAtual === 'imagem';
     const comDuracao = tipoAtual === 'musica' || tipoAtual === 'som';
+
+    // Duração: só para música e som
     grupoDuracao.style.display = comDuracao ? 'flex' : 'none';
+
+    // Formato e Resolução: só fazem sentido para imagem
+    const grupoFormato    = document.getElementById('grupo-formato');
+    const grupoResolucao  = document.getElementById('grupo-resolucao');
+    const grupoCount      = document.getElementById('grupo-count');
+
+    if (grupoFormato)   grupoFormato.style.display   = eImagem ? 'flex' : 'none';
+    if (grupoResolucao) grupoResolucao.style.display  = eImagem ? 'flex' : 'none';
+    if (grupoCount)     grupoCount.style.display      = eImagem ? 'flex' : 'none';
+
     atualizarPlaceholderPrompt();
   }
 
@@ -499,6 +534,9 @@
   window.addEventListener('online',  () => setNetworkStatus(true));
   window.addEventListener('offline', () => setNetworkStatus(false));
 
+  // Actualiza o ratio dos cards quando muda a resolução
+  campoResolucao.addEventListener('change', atualizarRatioCards);
+
   // Permite submeter com Ctrl+Enter no textarea
   txtPrompt.addEventListener('keydown', e => {
     if (e.ctrlKey && e.key === 'Enter') gerar();
@@ -529,8 +567,9 @@
     atualizarHistoricoUI();
     selecionarTipo('imagem');
     limparResultados();
+    atualizarRatioCards();
     validarConfig();
-    log('EvlArte v1.2 iniciado. Prima ` para ver/ocultar logs.');
+    log('EvlArte v1.3 iniciado. Prima ` para ver/ocultar logs.');
   }
 
   init();
