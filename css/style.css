@@ -1,33 +1,35 @@
 /*
  * ============================================================
- *  EvlArte — style.css  (v0.1.1)
+ *  EvlArte — style.css  (v1.2)
  *  CSS puro com nesting nativo.
  *  REGRA: a estrutura do CSS ESPELHA a estrutura do HTML.
  *  Variáveis globais em :root — nunca hard-code valores.
- * ============================================================
- */
+ *  CORREÇÕES v1.2:
+ *  - Responsividade mobile (breakpoint 768px)
+ *  - Logs ocultos por defeito
+ * ============================================================ */
 
 /* ── Variáveis globais ── */
 :root {
-  --bg-0:      #09090e;
-  --bg-1:      #111118;
-  --bg-2:      #1a1a24;
-  --bg-3:      #22222e;
-  --border:    rgba(255,255,255,0.07);
-  --border-a:  rgba(0,229,176,0.28);
-  --text-0:    #eeeef5;
-  --text-1:    #9898b0;
-  --text-2:    #50506a;
-  --accent:    #00e5b0;
-  --accent-g:  rgba(0,229,176,0.14);
-  --accent-s:  rgba(0,229,176,0.08);
-  --danger:    #ff4d6d;
-  --warn:      #ffaa00;
-  --r:         8px;
-  --r-lg:      14px;
-  --font:      'Syne', sans-serif;
-  --mono:      'IBM Plex Mono', monospace;
-  --ease:      150ms ease;
+  --bg-0:     #09090e;
+  --bg-1:     #111118;
+  --bg-2:     #1a1a24;
+  --bg-3:     #22222e;
+  --border:   rgba(255,255,255,0.07);
+  --border-a: rgba(0,229,176,0.28);
+  --text-0:   #eeeef5;
+  --text-1:   #9898b0;
+  --text-2:   #50506a;
+  --accent:   #00e5b0;
+  --accent-g: rgba(0,229,176,0.14);
+  --accent-s: rgba(0,229,176,0.08);
+  --danger:   #ff4d6d;
+  --warn:     #ffaa00;
+  --r:        8px;
+  --r-lg:     14px;
+  --font:     'Syne', sans-serif;
+  --mono:     'IBM Plex Mono', monospace;
+  --ease:     150ms ease;
 }
 
 /* ── Reset mínimo ── */
@@ -50,6 +52,7 @@ body {
     flex-direction: column;
     min-height: 100vh;
 
+    /* ── Header ── */
     & .gm__header {
       display: flex;
       align-items: center;
@@ -110,6 +113,7 @@ body {
       }
     }
 
+    /* ── Workspace ── */
     & .gm__workspace {
       display: grid;
       grid-template-columns: 310px 1fr;
@@ -117,6 +121,7 @@ body {
       height: calc(100vh - 54px);
       overflow: hidden;
 
+      /* ── Painel esquerdo ── */
       & .gm__panel {
         background: var(--bg-1);
         border-right: 1px solid var(--border);
@@ -197,10 +202,9 @@ body {
                   box-shadow: 0 0 0 1px var(--accent);
                 }
 
+                /* Vídeo disponível mas desactivado visualmente enquanto sem endpoint */
                 &[data-type="video"] {
-                  opacity: .4;
-                  cursor: not-allowed;
-                  pointer-events: none;
+                  opacity: .5;
                 }
               }
             }
@@ -274,6 +278,7 @@ body {
           }
         }
 
+        /* ── Prompt + Botão ── */
         & .gm__prompt-section {
           display: flex;
           flex-direction: column;
@@ -364,6 +369,7 @@ body {
         }
       }
 
+      /* ── Output direito ── */
       & .gm__output {
         display: flex;
         flex-direction: column;
@@ -407,6 +413,7 @@ body {
           flex-direction: column;
           gap: 22px;
 
+          /* ── Grid de resultados ── */
           & .gm__results-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
@@ -543,6 +550,7 @@ body {
             }
           }
 
+          /* ── Histórico ── */
           & .gm__history {
             border: 1px solid var(--border);
             border-radius: var(--r-lg);
@@ -643,6 +651,36 @@ body {
         }
       }
     }
+  }
+}
+
+/* ── Responsividade ── */
+@media (max-width: 768px) {
+  body .gm .gm__workspace {
+    grid-template-columns: 1fr;
+    height: auto;
+    overflow: visible;
+
+    & .gm__panel {
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      height: auto;
+      overflow-y: visible;
+    }
+
+    & .gm__output {
+      height: auto;
+
+      & .gm__output-body {
+        padding: 14px;
+      }
+    }
+  }
+
+  body .gm .gm__header {
+    padding: 0 14px;
+
+    & .gm__brand-name { font-size: 15px; }
   }
 }
 
