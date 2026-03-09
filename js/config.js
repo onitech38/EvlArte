@@ -24,7 +24,7 @@ const CONFIG = {
     musica: {
       ativo: true,
       endpoint: "https://api-inference.huggingface.co/models/facebook/musicgen-small",
-      token: "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",
+      token: "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",
       mensagem: '🎵 A gerar música via Hugging Face (proxy)…',
     },
 
