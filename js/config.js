@@ -23,7 +23,7 @@ const CONFIG = {
 
     musica: {
       ativo: true,
-      endpoint: "https://router.huggingface.co/models/facebook/musicgen-small",
+      endpoint: "https://router.huggingface.co/hf-inference/models/facebook/musicgen-stereo-small",
       mensagem: '🎵 A gerar música via Hugging Face (proxy)…',
     },
 
