@@ -268,6 +268,7 @@
     const url = CONFIG.apis.musica.endpoint
       + encodeURIComponent(prompt)
       + `?model=elevenmusicai&duration=${dur}&instrumental=false`;
+    
   
     log('URL: ' + url);
   
