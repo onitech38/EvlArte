@@ -263,14 +263,14 @@
   // ─────────────────────────────────────────────
   async function gerarMusica(prompt, duracao) {
     log('A gerar música via Hugging Face (proxy)…');
-
+  
     const cfg = CONFIG.apis.musica;
-    if (!cfg.endpoint || !cfg.token || cfg.token === 'SEU_TOKEN_HF') {
-      throw new Error('Token do Hugging Face não configurado em config.js.');
+    if (!cfg.endpoint) {
+      throw new Error('Endpoint de música não configurado em config.js.');
     }
-
+  
     const urlProxy = CONFIG.proxyUrl + encodeURIComponent(cfg.endpoint);
-
+  
     const resp = await fetch(urlProxy, {
       method: 'POST',
       headers: {
@@ -280,13 +280,13 @@
         inputs: `${prompt} (duration: ${duracao || 10} seconds)`,
       }),
     });
-
+  
     if (!resp.ok) {
       const txt = await resp.text().catch(() => '');
       log(`HF erro ${resp.status}: ${txt}`);
       throw new Error(`Hugging Face respondeu com erro ${resp.status}.`);
     }
-
+  
     const blob = await resp.blob();
     log('Música gerada com sucesso.');
     return URL.createObjectURL(blob);
