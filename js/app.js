@@ -1,41 +1,53 @@
 // ============================================================
-//  EvlArte — app.js  (v1.1)
+//  EvlArte — app.js  (v1.2)
+//  CORREÇÕES:
+//  - Botão Gerar reposto imediatamente após erro de imagem
+//  - campoCount valida NaN
+//  - Som e Vídeo mostram feedback claro ao utilizador
+//  - Download de imagem via blob (evita erro CORS)
+//  - Logs de debug ocultáveis com tecla `
+//  - Histórico guarda miniatura da imagem (base64)
+//  - Validação de config no init()
 // ============================================================
 
 (() => {
 
+  // ─────────────────────────────────────────────
   // 1. DOM
-  const tipoBtns = document.querySelectorAll('.gm__type-card');
-  const campoTema = document.getElementById('param-tema');
-  const campoEstilo = document.getElementById('param-estilo');
-  const campoCount = document.getElementById('param-count');
-  const campoFormato = document.getElementById('param-formato');
+  // ─────────────────────────────────────────────
+  const tipoBtns       = document.querySelectorAll('.gm__type-card');
+  const campoTema      = document.getElementById('param-tema');
+  const campoEstilo    = document.getElementById('param-estilo');
+  const campoCount     = document.getElementById('param-count');
   const campoResolucao = document.getElementById('param-resolucao');
-  const campoArtista = document.getElementById('param-artista');
-  const campoDuracao = document.getElementById('param-duracao');
-  const grupoDuracao = document.getElementById('grupo-duracao');
+  const campoArtista   = document.getElementById('param-artista');
+  const campoDuracao   = document.getElementById('param-duracao');
+  const grupoDuracao   = document.getElementById('grupo-duracao');
 
-  const txtPrompt = document.getElementById('gm-prompt');
+  const txtPrompt      = document.getElementById('gm-prompt');
   const btnPromptClear = document.getElementById('gm-prompt-clear');
-  const btnGerar = document.getElementById('gm-gerar');
+  const btnGerar       = document.getElementById('gm-gerar');
 
-  const resultsGrid = document.getElementById('gm-results');
+  const resultsGrid    = document.getElementById('gm-results');
   const btnOutputClear = document.getElementById('gm-output-clear');
 
-  const historyList = document.getElementById('gm-history-list');
-  const btnHistoryClear = document.getElementById('gm-history-clear');
+  const historyList    = document.getElementById('gm-history-list');
+  const btnHistoryClear= document.getElementById('gm-history-clear');
 
-  const netDot = document.getElementById('gm-net-dot');
-  const netLabel = document.getElementById('gm-net-label');
+  const netDot         = document.getElementById('gm-net-dot');
+  const netLabel       = document.getElementById('gm-net-label');
+  const logBox         = document.getElementById('gm-logs');
 
-  const logBox = document.getElementById('gm-logs');
-
+  // ─────────────────────────────────────────────
   // 2. Estado
+  // ─────────────────────────────────────────────
   let tipoAtual = 'imagem';
   let historico = [];
   const storageKey = CONFIG.storage.chave;
 
-  // 3. Utilitários
+  // ─────────────────────────────────────────────
+  // 3. Logs (ocultar/mostrar com tecla `)
+  // ─────────────────────────────────────────────
   function log(msg) {
     if (!logBox) return;
     const line = document.createElement('div');
@@ -44,22 +56,40 @@
     logBox.scrollTop = logBox.scrollHeight;
   }
 
+  document.addEventListener('keydown', e => {
+    if (e.key === '`') {
+      logBox.style.display = logBox.style.display === 'none' ? 'block' : 'none';
+    }
+  });
+
+  // ─────────────────────────────────────────────
+  // 4. Rede
+  // ─────────────────────────────────────────────
   function setNetworkStatus(online) {
     netDot.classList.toggle('online', online);
     netDot.classList.toggle('offline', !online);
     netLabel.textContent = online ? 'Online' : 'Offline';
   }
 
+  // ─────────────────────────────────────────────
+  // 5. Histórico
+  // ─────────────────────────────────────────────
   function carregarHistorico() {
     try {
       const raw = localStorage.getItem(storageKey);
       if (raw) historico = JSON.parse(raw);
-    } catch {}
+    } catch { historico = []; }
   }
 
   function guardarHistorico() {
-    const max = CONFIG.limites.maxHistorico;
-    localStorage.setItem(storageKey, JSON.stringify(historico.slice(-max)));
+    try {
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify(historico.slice(-CONFIG.limites.maxHistorico))
+      );
+    } catch (e) {
+      log('Erro ao guardar histórico: ' + e.message);
+    }
   }
 
   function atualizarHistoricoUI() {
@@ -74,14 +104,24 @@
       const li = document.createElement('div');
       li.className = 'gm__history-item';
 
+      // Miniatura se existir
+      const thumb = item.thumb
+        ? `<img src="${item.thumb}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;flex-shrink:0;">`
+        : '';
+
       li.innerHTML = `
         <div class="gm__history-item-header">
           <span class="gm__history-type gm__history-type--${item.tipo}">
             ${item.tipo.toUpperCase()}
           </span>
-          <span class="gm__history-time">${new Date(item.ts).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})}</span>
+          <span class="gm__history-time">
+            ${new Date(item.ts).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})}
+          </span>
         </div>
-        <div class="gm__history-prompt">${item.prompt}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+          ${thumb}
+          <div class="gm__history-prompt">${item.prompt}</div>
+        </div>
       `;
 
       li.addEventListener('click', () => {
@@ -93,33 +133,75 @@
     });
   }
 
-  function adicionarAoHistorico(tipo, prompt) {
+  function adicionarAoHistorico(tipo, prompt, thumb = null) {
     if (!prompt.trim()) return;
-    historico.push({ tipo, prompt, ts: Date.now() });
+    historico.push({ tipo, prompt, ts: Date.now(), thumb });
     guardarHistorico();
     atualizarHistoricoUI();
   }
 
+  // ─────────────────────────────────────────────
+  // 6. Resultados — estados UI
+  // ─────────────────────────────────────────────
   function limparResultados() {
     resultsGrid.innerHTML = `
       <div class="gm__results-empty">
         <div class="gm__results-empty-icon">✦</div>
         <p>Os resultados aparecerão aqui</p>
-      </div>
-    `;
+      </div>`;
   }
 
   function mostrarErro(msg) {
-    resultsGrid.innerHTML = `<div class="gm__error-msg">${msg}</div>`;
+    resultsGrid.innerHTML = `<div class="gm__error-msg">⚠️ ${msg}</div>`;
   }
 
-  // 4. UI
+  function mostrarLoader(msg) {
+    resultsGrid.innerHTML = `
+      <div class="gm__coming-soon">
+        <span>⏳</span>
+        <p>${msg}</p>
+      </div>`;
+  }
+
+  function mostrarAudio(url, prompt, tipo = 'musica') {
+    const icone = tipo === 'musica' ? '🎵' : '🔊';
+    resultsGrid.innerHTML = `
+      <div class="gm__result-card">
+        <div class="gm__result-audio-wrapper">
+          <div class="gm__result-audio-icon">${icone}</div>
+          <div class="gm__result-audio-prompt">${prompt}</div>
+          <audio class="gm__result-audio" controls src="${url}"></audio>
+        </div>
+        <div class="gm__result-footer">
+          <span class="gm__result-seed">${tipo}</span>
+          <a class="gm__result-dl" href="${url}" download="evlarte_audio.wav">download</a>
+        </div>
+      </div>`;
+  }
+
+  function mostrarComingSoon(tipo) {
+    const info = {
+      som:   { icone: '🔊', msg: 'Geração de som em breve — endpoint por configurar.' },
+      video: { icone: '🎬', msg: 'Geração de vídeo em breve — endpoint por configurar.' },
+    };
+    const { icone, msg } = info[tipo] || { icone: '⚙️', msg: 'Funcionalidade em desenvolvimento.' };
+    resultsGrid.innerHTML = `
+      <div class="gm__coming-soon">
+        <span>${icone}</span>
+        <p>${msg}</p>
+      </div>`;
+  }
+
+  // ─────────────────────────────────────────────
+  // 7. UI — tipo e placeholder
+  // ─────────────────────────────────────────────
   function atualizarPlaceholderPrompt() {
     txtPrompt.placeholder = CONFIG.exemplos[tipoAtual] || 'Descreve o que queres gerar…';
   }
 
   function atualizarUIporTipo() {
-    grupoDuracao.style.display = (tipoAtual === 'musica' || tipoAtual === 'som') ? 'flex' : 'none';
+    const comDuracao = tipoAtual === 'musica' || tipoAtual === 'som';
+    grupoDuracao.style.display = comDuracao ? 'flex' : 'none';
     atualizarPlaceholderPrompt();
   }
 
@@ -129,33 +211,30 @@
     atualizarUIporTipo();
   }
 
-  // 5. Prompt
+  // ─────────────────────────────────────────────
+  // 8. Construir prompt final
+  // ─────────────────────────────────────────────
   function construirPromptCompleto() {
     const partes = [];
-    if (txtPrompt.value.trim()) partes.push(txtPrompt.value.trim());
-    if (campoTema.value.trim()) partes.push(`tema: ${campoTema.value.trim()}`);
-    if (campoEstilo.value.trim()) partes.push(`estilo: ${campoEstilo.value.trim()}`);
+    if (txtPrompt.value.trim())    partes.push(txtPrompt.value.trim());
+    if (campoTema.value.trim())    partes.push(`tema: ${campoTema.value.trim()}`);
+    if (campoEstilo.value.trim())  partes.push(`estilo: ${campoEstilo.value.trim()}`);
     if (campoArtista.value.trim()) partes.push(`inspirado em ${campoArtista.value.trim()}`);
     return partes.join(', ');
   }
 
-  // 6. Proxy (música, som, vídeo)
-
-  // 🎵 Música via Hugging Face (text-to-audio) + proxy
+  // ─────────────────────────────────────────────
+  // 9. APIs — Música (Hugging Face via proxy)
+  // ─────────────────────────────────────────────
   async function gerarMusica(prompt, duracao) {
     log('A gerar música via Hugging Face (proxy)…');
 
     const cfg = CONFIG.apis.musica;
-    if (!cfg.endpoint || !cfg.token) {
-      throw new Error('Configuração de música incompleta.');
+    if (!cfg.endpoint || !cfg.token || cfg.token === 'SEU_TOKEN_HF') {
+      throw new Error('Token do Hugging Face não configurado em config.js.');
     }
 
-    const urlReal = cfg.endpoint;
-    const urlProxy = CONFIG.proxyUrl + encodeURIComponent(urlReal);
-
-    const body = {
-      inputs: `${prompt} (duração aproximada: ${duracao || 10} segundos)`,
-    };
+    const urlProxy = CONFIG.proxyUrl + encodeURIComponent(cfg.endpoint);
 
     const resp = await fetch(urlProxy, {
       method: 'POST',
@@ -163,113 +242,57 @@
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${cfg.token}`,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        inputs: `${prompt} (duration: ${duracao || 10} seconds)`,
+      }),
     });
 
     if (!resp.ok) {
       const txt = await resp.text().catch(() => '');
-      log('Resposta HF não OK: ' + resp.status + ' ' + txt);
-      throw new Error('Falha ao gerar música.');
+      log(`HF erro ${resp.status}: ${txt}`);
+      throw new Error(`Hugging Face respondeu com erro ${resp.status}.`);
     }
 
     const blob = await resp.blob();
+    log('Música gerada com sucesso.');
     return URL.createObjectURL(blob);
   }
 
-  // 🔊 Som (placeholder via proxy)
+  // ─────────────────────────────────────────────
+  // 10. APIs — Som (placeholder)
+  // ─────────────────────────────────────────────
   async function gerarSom(prompt, duracao) {
-    log('A gerar som via proxy…');
-
+    log('Som: endpoint não configurado.');
     const cfg = CONFIG.apis.som;
-    if (!cfg.endpoint) {
-      throw new Error('Endpoint de som não configurado.');
-    }
+    if (!cfg.endpoint) throw new Error('Endpoint de som não configurado.');
 
-    const urlReal = cfg.endpoint;
-    const urlProxy = CONFIG.proxyUrl + encodeURIComponent(urlReal);
-
+    const urlProxy = CONFIG.proxyUrl + encodeURIComponent(cfg.endpoint);
     const resp = await fetch(urlProxy, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt, duration: duracao }),
     });
-
     if (!resp.ok) throw new Error('Falha ao gerar som.');
-
-    const blob = await resp.blob();
-    return URL.createObjectURL(blob);
+    return URL.createObjectURL(await resp.blob());
   }
 
-  // 🎬 Vídeo (placeholder via proxy)
-  async function gerarVideo(prompt) {
-    log('A gerar vídeo via proxy…');
-
-    const cfg = CONFIG.apis.video;
-    if (!cfg.endpoint) {
-      throw new Error('Endpoint de vídeo não configurado.');
-    }
-
-    const urlReal = cfg.endpoint;
-    const urlProxy = CONFIG.proxyUrl + encodeURIComponent(urlReal);
-
-    const resp = await fetch(urlProxy, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt }),
-    });
-
-    if (!resp.ok) throw new Error('Falha ao gerar vídeo.');
-
-    const blob = await resp.blob();
-    return URL.createObjectURL(blob);
-  }
-
-  // 7. Helpers de renderização
-  function mostrarLoader(msg) {
-    resultsGrid.innerHTML = `
-      <div class="gm__coming-soon">
-        <span>⏳</span>
-        <p>${msg}</p>
-      </div>
-    `;
-  }
-
-  function mostrarAudio(url, prompt) {
-    resultsGrid.innerHTML = `
-      <div class="gm__result-card">
-        <div class="gm__result-audio-wrapper">
-          <div class="gm__result-audio-icon">🎵</div>
-          <div class="gm__result-audio-prompt">${prompt}</div>
-          <audio class="gm__result-audio" controls src="${url}"></audio>
-        </div>
-      </div>
-    `;
-  }
-
-  function mostrarVideo(url, prompt) {
-    resultsGrid.innerHTML = `
-      <div class="gm__result-card">
-        <video controls width="100%" src="${url}"></video>
-        <div class="gm__result-footer">
-          <span class="gm__result-seed">${prompt}</span>
-        </div>
-      </div>
-    `;
-  }
-
-  // 8. Pollinations (imagem)
+  // ─────────────────────────────────────────────
+  // 11. APIs — Imagem (Pollinations)
+  // ─────────────────────────────────────────────
   function construirUrlPollinations(modelo) {
     const { baseUrl, nologo, enhance } = CONFIG.apis.imagem.pollinations;
-    const res = CONFIG.resolucoes[campoResolucao.value] || CONFIG.resolucoes['1024x1024'];
+    const res    = CONFIG.resolucoes[campoResolucao.value] || CONFIG.resolucoes['1024x1024'];
     const prompt = encodeURIComponent(construirPromptCompleto() || CONFIG.exemplos.imagem);
+    const seed   = Math.floor(Math.random() * 1e9);
 
-    const params = new URLSearchParams();
-    params.set('model', modelo);
-    params.set('width', res.w);
-    params.set('height', res.h);
-    if (nologo) params.set('nologo', 'true');
+    const params = new URLSearchParams({
+      model: modelo,
+      width: res.w,
+      height: res.h,
+      seed,
+    });
+    if (nologo)  params.set('nologo', 'true');
     if (enhance) params.set('enhance', 'true');
-    params.set('seed', Math.floor(Math.random() * 1e9));
 
     return `${baseUrl}${prompt}?${params.toString()}`;
   }
@@ -280,148 +303,234 @@
     card.innerHTML = `
       <div class="gm__result-img-wrapper">
         <div class="gm__result-loader">A gerar imagem…</div>
-        <img class="gm__result-img" alt="Resultado">
+        <img class="gm__result-img" alt="Resultado gerado">
       </div>
       <div class="gm__result-footer">
         <span class="gm__result-seed"></span>
-        <a class="gm__result-dl" href="#" download>download</a>
-      </div>
-    `;
+        <a class="gm__result-dl" href="#" download="evlarte.png">download</a>
+      </div>`;
     return card;
   }
 
-  function carregarImagemComFallback(imgEl, loaderEl, seedEl, dlEl, idx = 0) {
+  // Converte URL de imagem → blob → URL local (resolve CORS no download)
+  async function urlParaBlob(url) {
+    const resp = await fetch(url);
+    const blob = await resp.blob();
+    return URL.createObjectURL(blob);
+  }
+
+  // Cria miniatura 36×36 em base64 para o histórico
+  function criarThumb(imgEl) {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 36; canvas.height = 36;
+      canvas.getContext('2d').drawImage(imgEl, 0, 0, 36, 36);
+      return canvas.toDataURL('image/jpeg', 0.6);
+    } catch { return null; }
+  }
+
+  function carregarImagemComFallback(imgEl, loaderEl, seedEl, dlEl, promptFinal, idx = 0) {
     const modelos = CONFIG.apis.imagem.ordem;
+
     if (idx >= modelos.length) {
-      loaderEl.textContent = 'Falha ao gerar imagem.';
+      loaderEl.textContent = '❌ Falha ao gerar — tenta novamente.';
+      reporBotaoGerar(); // CORREÇÃO: repõe imediatamente após falha
       return;
     }
 
     const modelo = modelos[idx];
-    const url = construirUrlPollinations(modelo);
+    const url    = construirUrlPollinations(modelo);
 
-    loaderEl.textContent = `A gerar com modelo: ${modelo}…`;
-    seedEl.textContent = `modelo: ${modelo}`;
+    loaderEl.textContent = `modelo: ${modelo}…`;
+    seedEl.textContent   = `modelo: ${modelo}`;
 
-    imgEl.onload = () => {
+    imgEl.onload = async () => {
       imgEl.style.opacity = '1';
       loaderEl.remove();
-      dlEl.href = url;
+
+      // Download via blob local (sem erros CORS)
+      try {
+        const blobUrl = await urlParaBlob(url);
+        dlEl.href = blobUrl;
+      } catch {
+        dlEl.href = url; // fallback para URL direta
+      }
+
+      // Miniatura para o histórico (só na primeira imagem)
+      if (idx === 0 || !historico[historico.length - 1]?.thumb) {
+        const thumb = criarThumb(imgEl);
+        if (thumb && historico.length > 0) {
+          historico[historico.length - 1].thumb = thumb;
+          guardarHistorico();
+          atualizarHistoricoUI();
+        }
+      }
     };
 
-    imgEl.onerror = () => carregarImagemComFallback(imgEl, loaderEl, seedEl, dlEl, idx + 1);
+    imgEl.onerror = () => {
+      log(`Modelo "${modelo}" falhou — a tentar próximo…`);
+      carregarImagemComFallback(imgEl, loaderEl, seedEl, dlEl, promptFinal, idx + 1);
+    };
 
     imgEl.src = url;
   }
 
-  // 9. gerar()
+  // ─────────────────────────────────────────────
+  // 12. Botão Gerar — estado
+  // ─────────────────────────────────────────────
+  function bloquearBotaoGerar() {
+    btnGerar.disabled = true;
+    btnGerar.classList.add('loading');
+    btnGerar.innerHTML = `<span class="gm__spinner"></span> A gerar…`;
+  }
+
+  function reporBotaoGerar() {
+    btnGerar.disabled = false;
+    btnGerar.classList.remove('loading');
+    btnGerar.textContent = '⚡ Gerar';
+  }
+
+  // ─────────────────────────────────────────────
+  // 13. Função principal: gerar()
+  // ─────────────────────────────────────────────
   async function gerar() {
     if (!navigator.onLine) {
-      mostrarErro('Sem ligação à internet.');
+      mostrarErro('Sem ligação à internet. Verifica a tua rede.');
       return;
     }
 
     const promptFinal = construirPromptCompleto();
-
     if (!promptFinal.trim()) {
-      mostrarErro('Escreve algo no prompt ou no tema.');
+      mostrarErro('Escreve algo no prompt ou preenche o campo Tema.');
       return;
     }
 
-    // Música
+    // ── MÚSICA ──────────────────────────────────
     if (tipoAtual === 'musica') {
+      bloquearBotaoGerar();
       mostrarLoader(CONFIG.apis.musica.mensagem);
       try {
-        const url = await gerarMusica(promptFinal, parseInt(campoDuracao.value));
-        mostrarAudio(url, promptFinal);
+        const duracao = parseInt(campoDuracao.value) || 10;
+        const url = await gerarMusica(promptFinal, duracao);
+        mostrarAudio(url, promptFinal, 'musica');
         adicionarAoHistorico('musica', promptFinal);
       } catch (e) {
         log('Erro música: ' + e.message);
-        mostrarErro('Erro ao gerar música.');
+        mostrarErro(e.message);
+      } finally {
+        reporBotaoGerar();
       }
       return;
     }
 
-    // Som
+    // ── SOM ─────────────────────────────────────
     if (tipoAtual === 'som') {
+      if (!CONFIG.apis.som.endpoint) {
+        mostrarComingSoon('som');
+        return;
+      }
+      bloquearBotaoGerar();
       mostrarLoader(CONFIG.apis.som.mensagem);
       try {
-        const url = await gerarSom(promptFinal, parseInt(campoDuracao.value));
-        mostrarAudio(url, promptFinal);
+        const duracao = parseInt(campoDuracao.value) || 10;
+        const url = await gerarSom(promptFinal, duracao);
+        mostrarAudio(url, promptFinal, 'som');
         adicionarAoHistorico('som', promptFinal);
       } catch (e) {
         log('Erro som: ' + e.message);
-        mostrarErro('Erro ao gerar som.');
+        mostrarErro(e.message);
+      } finally {
+        reporBotaoGerar();
       }
       return;
     }
 
-    // Vídeo
+    // ── VÍDEO ────────────────────────────────────
     if (tipoAtual === 'video') {
-      mostrarLoader(CONFIG.apis.video.mensagem);
-      try {
-        const url = await gerarVideo(promptFinal);
-        mostrarVideo(url, promptFinal);
-        adicionarAoHistorico('video', promptFinal);
-      } catch (e) {
-        log('Erro vídeo: ' + e.message);
-        mostrarErro('Erro ao gerar vídeo.');
-      }
+      mostrarComingSoon('video');
       return;
     }
 
-    // Imagem
-    const count = Math.min(Math.max(parseInt(campoCount.value || '1'), 1), CONFIG.limites.maxResultados);
+    // ── IMAGEM ───────────────────────────────────
+    const rawCount = parseInt(campoCount.value);
+    const count = isNaN(rawCount)
+      ? 1
+      : Math.min(Math.max(rawCount, 1), CONFIG.limites.maxResultados);
 
-    btnGerar.disabled = true;
-    btnGerar.classList.add('loading');
-    btnGerar.textContent = 'A gerar…';
-
+    bloquearBotaoGerar();
     resultsGrid.innerHTML = '';
 
+    adicionarAoHistorico('imagem', promptFinal); // regista antes de carregar
+
     for (let i = 0; i < count; i++) {
-      const card = criarCardImagem();
+      const card    = criarCardImagem();
       resultsGrid.appendChild(card);
 
-      const imgEl = card.querySelector('.gm__result-img');
-      const loaderEl = card.querySelector('.gm__result-loader');
-      const seedEl = card.querySelector('.gm__result-seed');
-      const dlEl = card.querySelector('.gm__result-dl');
+      const imgEl   = card.querySelector('.gm__result-img');
+      const loaderEl= card.querySelector('.gm__result-loader');
+      const seedEl  = card.querySelector('.gm__result-seed');
+      const dlEl    = card.querySelector('.gm__result-dl');
 
-      carregarImagemComFallback(imgEl, loaderEl, seedEl, dlEl);
+      carregarImagemComFallback(imgEl, loaderEl, seedEl, dlEl, promptFinal);
     }
 
-    adicionarAoHistorico('imagem', promptFinal);
-
-    setTimeout(() => {
-      btnGerar.disabled = false;
-      btnGerar.classList.remove('loading');
-      btnGerar.textContent = '⚡ Gerar';
-    }, CONFIG.limites.timeoutImg);
+    // Repõe o botão após o timeout configurado
+    setTimeout(reporBotaoGerar, CONFIG.limites.timeoutImg);
   }
 
-  // 10. Eventos
-  tipoBtns.forEach(btn => btn.addEventListener('click', () => selecionarTipo(btn.dataset.type)));
+  // ─────────────────────────────────────────────
+  // 14. Eventos
+  // ─────────────────────────────────────────────
+  tipoBtns.forEach(btn =>
+    btn.addEventListener('click', () => selecionarTipo(btn.dataset.type))
+  );
+
   btnPromptClear.addEventListener('click', () => (txtPrompt.value = ''));
   btnGerar.addEventListener('click', gerar);
   btnOutputClear.addEventListener('click', limparResultados);
+
   btnHistoryClear.addEventListener('click', () => {
+    if (!confirm('Tens a certeza que queres limpar o histórico?')) return;
     historico = [];
     guardarHistorico();
     atualizarHistoricoUI();
   });
 
-  window.addEventListener('online', () => setNetworkStatus(true));
+  window.addEventListener('online',  () => setNetworkStatus(true));
   window.addEventListener('offline', () => setNetworkStatus(false));
 
-  // 11. Init
+  // Permite submeter com Ctrl+Enter no textarea
+  txtPrompt.addEventListener('keydown', e => {
+    if (e.ctrlKey && e.key === 'Enter') gerar();
+  });
+
+  // ─────────────────────────────────────────────
+  // 15. Validação de configuração
+  // ─────────────────────────────────────────────
+  function validarConfig() {
+    const avisos = [];
+    if (!CONFIG.proxyUrl || CONFIG.proxyUrl.includes('TEU_WORKER_URL')) {
+      avisos.push('proxyUrl não configurado em config.js');
+    }
+    if (!CONFIG.apis.musica.token || CONFIG.apis.musica.token === 'SEU_TOKEN_HF') {
+      avisos.push('Token Hugging Face não configurado em config.js');
+    }
+    avisos.forEach(a => log('⚠️ CONFIG: ' + a));
+    return avisos.length === 0;
+  }
+
+  // ─────────────────────────────────────────────
+  // 16. Init
+  // ─────────────────────────────────────────────
   function init() {
+    logBox.style.display = 'none'; // logs ocultos por defeito (tecla ` para ver)
     setNetworkStatus(navigator.onLine);
     carregarHistorico();
     atualizarHistoricoUI();
     selecionarTipo('imagem');
     limparResultados();
-    log('EvlArte iniciado.');
+    validarConfig();
+    log('EvlArte v1.2 iniciado. Prima ` para ver/ocultar logs.');
   }
 
   init();
