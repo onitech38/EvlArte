@@ -6,9 +6,8 @@ const CONFIG = {
   versao: '1.1.0',
   nome: 'EvlArte',
 
-  // URL do teu Cloudflare Worker (termina em ?url=)
-  proxyUrl: 'https://dry-glade-294d.onitech38.workers.dev/',
-  token: "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",
+  
+  proxyUrl: 'https://dry-glade-294d.onitech38.workers.dev/?url=',
 
   apis: {
     imagem: {
@@ -25,7 +24,7 @@ const CONFIG = {
     musica: {
       ativo: true,
       endpoint: "https://api-inference.huggingface.co/models/facebook/musicgen-small",
-      token: "SEU_TOKEN_HF",
+      token: "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",
       mensagem: '🎵 A gerar música via Hugging Face (proxy)…',
     },
 
