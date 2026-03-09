@@ -262,29 +262,21 @@
   // 9. APIs — Música (Hugging Face via proxy)
   // ─────────────────────────────────────────────
   async function gerarMusica(prompt, duracao) {
-    log('A gerar música via Hugging Face (proxy)…');
+    log('A gerar música via Pollinations…');
   
-    const cfg = CONFIG.apis.musica;
-    if (!cfg.endpoint) {
-      throw new Error('Endpoint de música não configurado em config.js.');
-    }
+    const dur = Math.min(Math.max(parseInt(duracao) || 10, 3), 300);
+    const url = CONFIG.apis.musica.endpoint
+      + encodeURIComponent(prompt)
+      + `?model=elevenmusicai&duration=${dur}&instrumental=false`;
   
-    const urlProxy = CONFIG.proxyUrl + encodeURIComponent(cfg.endpoint);
+    log('URL: ' + url);
   
-    const resp = await fetch(urlProxy, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        inputs: `${prompt} (duration: ${duracao || 10} seconds)`,
-      }),
-    });
+    const resp = await fetch(url);
   
     if (!resp.ok) {
       const txt = await resp.text().catch(() => '');
-      log(`HF erro ${resp.status}: ${txt}`);
-      throw new Error(`Hugging Face respondeu com erro ${resp.status}.`);
+      log(`Erro ${resp.status}: ${txt}`);
+      throw new Error(`Pollinations respondeu com erro ${resp.status}.`);
     }
   
     const blob = await resp.blob();
