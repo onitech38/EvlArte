@@ -364,6 +364,7 @@
   // ─────────────────────────────────────────────
   async function gerarMusica(prompt, duracao) {
     log('A gerar música via Pollinations…');
+<<<<<<< HEAD
 
     const dur = Math.min(
       Math.max(parseInt(duracao) || 10, CONFIG.limites.minDuracao),
@@ -391,6 +392,22 @@
       if (resp.status === 401 || resp.status === 403) {
         throw new Error('Token Pollinations inválido. Adiciona POLLINATIONS_TOKEN no Cloudflare Worker.');
       }
+=======
+  
+    const dur = Math.min(Math.max(parseInt(duracao) || 10, 3), 300);
+    const url = CONFIG.apis.musica.endpoint
+      + encodeURIComponent(prompt)
+      + `?model=elevenmusicai&duration=${dur}&instrumental=false`;
+    
+  
+    log('URL: ' + url);
+  
+    const resp = await fetch(url);
+  
+    if (!resp.ok) {
+      const txt = await resp.text().catch(() => '');
+      log(`Erro ${resp.status}: ${txt}`);
+>>>>>>> f83645d22023579f5b8534afe6700f11877e5c64
       throw new Error(`Pollinations respondeu com erro ${resp.status}.`);
     }
 
