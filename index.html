@@ -11,7 +11,13 @@
 </head>
 <body>
 
-  <!-- .gm — wrapper raiz da aplicação -->
+  <!-- Banner offline (oculto por defeito) -->
+  <div class="gm__offline-banner" id="gm-offline-banner" style="display:none">
+    <span>⚠️</span>
+    <span>Sem ligação — a geração está desativada. O histórico continua disponível.</span>
+  </div>
+
+  <!-- .gm — wrapper raiz -->
   <div class="gm">
 
     <!-- Header -->
@@ -90,8 +96,8 @@
               <div class="gm__field" id="grupo-duracao" style="display:none">
                 <label class="gm__field-label" for="param-duracao">Duração (segundos)</label>
                 <div class="gm__field-row">
-                  <input type="number" id="param-duracao" min="5" max="30" value="10">
-                  <span class="gm__field-hint">máx. 30s</span>
+                  <input type="number" id="param-duracao" min="3" max="300" value="15">
+                  <span class="gm__field-hint">máx. 300s</span>
                 </div>
               </div>
 
@@ -136,7 +142,29 @@
           </div>
         </div>
 
-        <!-- Prompt + Gerar -->
+        <!-- Bloco 4: Upload de ficheiro -->
+        <div class="gm__section">
+          <div class="gm__section-header">
+            <span class="gm__section-title">Referência</span>
+            <span class="gm__section-badge">Opcional</span>
+          </div>
+          <div class="gm__section-body">
+            <div class="gm__fields">
+              <div class="gm__field">
+                <label class="gm__field-label">Ficheiro (imagem ou .txt)</label>
+                <label class="gm__upload-area" for="param-ficheiro">
+                  <span class="gm__upload-icon">📎</span>
+                  <span class="gm__upload-text">Arrasta ou clica para carregar</span>
+                  <input type="file" id="param-ficheiro" accept="image/*,.txt,.md" style="display:none">
+                </label>
+                <div id="gm-upload-preview"></div>
+                <button class="gm__upload-clear-btn" id="gm-upload-clear" style="display:none">✕ remover</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Prompt + Exemplos + Gerar -->
         <div class="gm__prompt-section">
           <div class="gm__prompt-header">
             <span class="gm__prompt-label">Prompt</span>
@@ -144,6 +172,13 @@
           </div>
           <textarea class="gm__prompt-textarea" id="gm-prompt" rows="4"
             placeholder="Descreve o que queres gerar…"></textarea>
+
+          <!-- Exemplos clicáveis -->
+          <div class="gm__exemplos">
+            <span class="gm__exemplos-label">Exemplos</span>
+            <div class="gm__exemplos-lista" id="gm-exemplos-lista"></div>
+          </div>
+
           <button class="gm__generate-btn" id="gm-gerar">⚡ Gerar</button>
         </div>
 
@@ -177,7 +212,7 @@
     </div>
   </div>
 
-  <!-- Logs de debug (ocultos por defeito) -->
+  <!-- Logs de debug -->
   <div id="gm-logs" style="
     display: none;
     position: fixed;
@@ -195,7 +230,6 @@
     z-index: 9998;
   "></div>
 
-  <!-- Botão toggle de logs -->
   <button id="gm-log-toggle" style="
     position: fixed;
     bottom: 0;

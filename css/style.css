@@ -1,12 +1,11 @@
 /*
  * ============================================================
- *  EvlArte — style.css  (v1.2)
- *  CSS puro com nesting nativo.
- *  REGRA: a estrutura do CSS ESPELHA a estrutura do HTML.
- *  Variáveis globais em :root — nunca hard-code valores.
- *  CORREÇÕES v1.2:
- *  - Responsividade mobile (breakpoint 768px)
- *  - Logs ocultos por defeito
+ *  EvlArte — style.css (v1.3)
+ *  CORREÇÕES v1.3:
+ *  - aspect-ratio usa --card-ratio (correto para todas as resoluções)
+ *  - Banner offline
+ *  - Área de upload de ficheiro
+ *  - Chips de exemplos de prompt
  * ============================================================ */
 
 /* ── Variáveis globais ── */
@@ -36,6 +35,22 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 input, select, textarea, button { font-family: inherit; }
 a { color: inherit; text-decoration: none; }
+
+/* ── Banner offline (fora do .gm, no topo da página) ── */
+.gm__offline-banner {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  background: rgba(255,170,0,0.12);
+  border-bottom: 1px solid rgba(255,170,0,0.3);
+  color: var(--warn);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 8px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 
 /* ══════════════════════════════════════════════════════
    body
@@ -202,10 +217,7 @@ body {
                   box-shadow: 0 0 0 1px var(--accent);
                 }
 
-                /* Vídeo disponível mas desactivado visualmente enquanto sem endpoint */
-                &[data-type="video"] {
-                  opacity: .5;
-                }
+                &[data-type="video"] { opacity: .5; }
               }
             }
 
@@ -273,12 +285,84 @@ body {
                     white-space: nowrap;
                   }
                 }
+
+                /* ── Upload de ficheiro ── */
+                & .gm__upload-area {
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                  padding: 10px 12px;
+                  border: 1px dashed var(--border);
+                  border-radius: var(--r);
+                  background: var(--bg-0);
+                  cursor: pointer;
+                  transition: border-color var(--ease), background var(--ease);
+
+                  &:hover {
+                    border-color: var(--border-a);
+                    background: var(--accent-s);
+                  }
+
+                  & .gm__upload-icon { font-size: 16px; }
+
+                  & .gm__upload-text {
+                    font-size: 11px;
+                    color: var(--text-2);
+                    font-family: var(--mono);
+                    font-style: italic;
+                  }
+                }
+
+                & .gm__upload-preview-wrap {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 6px;
+                  margin-top: 6px;
+
+                  & .gm__upload-img {
+                    width: 100%;
+                    border-radius: var(--r);
+                    max-height: 120px;
+                    object-fit: cover;
+                    border: 1px solid var(--border);
+                  }
+                }
+
+                & .gm__upload-badge {
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 6px;
+                  font-size: 10px;
+                  font-family: var(--mono);
+                  color: var(--accent);
+                  background: var(--accent-s);
+                  border: 1px solid var(--border-a);
+                  border-radius: 4px;
+                  padding: 3px 8px;
+                  margin-top: 4px;
+
+                  & .gm__upload-badge-size { color: var(--text-2); }
+                }
+
+                & .gm__upload-clear-btn {
+                  font-size: 10px;
+                  color: var(--text-2);
+                  background: none;
+                  border: none;
+                  cursor: pointer;
+                  font-family: var(--mono);
+                  text-align: left;
+                  padding: 0;
+                  transition: color var(--ease);
+
+                  &:hover { color: var(--danger); }
+                }
               }
             }
           }
         }
 
-        /* ── Prompt + Botão ── */
+        /* ── Prompt + Exemplos + Botão ── */
         & .gm__prompt-section {
           display: flex;
           flex-direction: column;
@@ -327,6 +411,28 @@ body {
 
             &::placeholder { color: var(--text-2); font-style: italic; }
             &:focus        { border-color: var(--accent); }
+          }
+
+          /* ── Exemplos ── */
+          & .gm__exemplos {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+
+            & .gm__exemplos-label {
+              font-size: 9px;
+              font-weight: 700;
+              letter-spacing: .12em;
+              text-transform: uppercase;
+              color: var(--text-2);
+              font-family: var(--mono);
+            }
+
+            & .gm__exemplos-lista {
+              display: flex;
+              flex-direction: column;
+              gap: 4px;
+            }
           }
 
           & .gm__generate-btn {
@@ -470,7 +576,8 @@ body {
 
               & .gm__result-img-wrapper {
                 position: relative;
-                aspect-ratio: 1;
+                /* ✅ CORREÇÃO: usa a variável --card-ratio definida pelo JS */
+                aspect-ratio: var(--card-ratio, 1);
                 overflow: hidden;
                 background: var(--bg-2);
 
@@ -654,6 +761,32 @@ body {
   }
 }
 
+/* ── Chips de exemplos (fora do nesting para simplicidade) ── */
+.gm__exemplo-chip {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 9px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  color: var(--text-1);
+  font-size: 10px;
+  font-family: var(--mono);
+  cursor: pointer;
+  transition: all var(--ease);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  &:hover {
+    border-color: var(--border-a);
+    color: var(--accent);
+    background: var(--accent-s);
+  }
+}
+
 /* ── Responsividade ── */
 @media (max-width: 768px) {
   body .gm .gm__workspace {
@@ -671,9 +804,7 @@ body {
     & .gm__output {
       height: auto;
 
-      & .gm__output-body {
-        padding: 14px;
-      }
+      & .gm__output-body { padding: 14px; }
     }
   }
 
